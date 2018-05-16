@@ -58,6 +58,7 @@ public class NodeMessageHandler implements MessageHandler, Runnable {
     private final RskSystemProperties config;
     private final BlockProcessor blockProcessor;
     private final SyncProcessor syncProcessor;
+    private final AltSyncProcessor altSyncProcessor;
     private final ChannelManager channelManager;
     private final TransactionPool transactionPool;
     private final PeerScoringManager peerScoringManager;
@@ -80,6 +81,7 @@ public class NodeMessageHandler implements MessageHandler, Runnable {
     public NodeMessageHandler(RskSystemProperties config,
                               @Nonnull final BlockProcessor blockProcessor,
                               final SyncProcessor syncProcessor,
+                              final AltSyncProcessor altSyncProcessor,
                               @Nullable final ChannelManager channelManager,
                               @Nullable final TransactionPool transactionPool,
                               final TxHandler txHandler,
@@ -89,12 +91,25 @@ public class NodeMessageHandler implements MessageHandler, Runnable {
         this.channelManager = channelManager;
         this.blockProcessor = blockProcessor;
         this.syncProcessor = syncProcessor;
+        this.altSyncProcessor = altSyncProcessor;
         this.transactionPool = transactionPool;
         this.blockValidationRule = blockValidationRule;
         this.transactionNodeInformation = new TransactionNodeInformation();
         this.txHandler = txHandler;
         this.cleanMsgTimestamp = System.currentTimeMillis();
         this.peerScoringManager = peerScoringManager;
+    }
+
+    // Old version used in tests
+    public NodeMessageHandler(RskSystemProperties config,
+                              @Nonnull final BlockProcessor blockProcessor,
+                              final SyncProcessor syncProcessor,
+                              @Nullable final ChannelManager channelManager,
+                              @Nullable final TransactionPool transactionPool,
+                              final TxHandler txHandler,
+                              @Nullable final PeerScoringManager peerScoringManager,
+                              @Nonnull BlockValidationRule blockValidationRule) {
+        this(config, blockProcessor, syncProcessor, null, channelManager, transactionPool, txHandler, peerScoringManager, blockValidationRule);
     }
 
     /**
@@ -352,7 +367,13 @@ public class NodeMessageHandler implements MessageHandler, Runnable {
     private void processStatusMessage(@Nonnull final MessageChannel sender, @Nonnull final StatusMessage message) {
         final Status status = message.getStatus();
         logger.trace("Process status {}", status.getBestBlockNumber());
-        this.syncProcessor.processStatus(sender, status);
+
+        if (this.altSyncProcessor != null) {
+            this.altSyncProcessor.processStatus(sender.getPeerNodeID(), status);
+        }
+        else {
+            this.syncProcessor.processStatus(sender, status);
+        }
     }
 
     private void processGetBlockMessage(@Nonnull final MessageChannel sender, @Nonnull final GetBlockMessage message) {
@@ -396,11 +417,21 @@ public class NodeMessageHandler implements MessageHandler, Runnable {
     }
 
     private void processSkeletonResponseMessage(@Nonnull final MessageChannel sender, @Nonnull final SkeletonResponseMessage message) {
-        this.syncProcessor.processSkeletonResponse(sender, message);
+        if (this.altSyncProcessor != null) {
+            this.altSyncProcessor.processSkeletonResponse(sender.getPeerNodeID(), message);
+        }
+        else {
+            this.syncProcessor.processSkeletonResponse(sender, message);
+        }
     }
 
     private void processBlockHeadersResponseMessage(@Nonnull final MessageChannel sender, @Nonnull final BlockHeadersResponseMessage message) {
-        this.syncProcessor.processBlockHeadersResponse(sender, message);
+        if (this.altSyncProcessor != null) {
+            this.altSyncProcessor.processBlockHeadersResponse(sender.getPeerNodeID(), message);
+        }
+        else {
+            this.syncProcessor.processBlockHeadersResponse(sender, message);
+        }
     }
 
     private void processBodyRequestMessage(@Nonnull final MessageChannel sender, @Nonnull final BodyRequestMessage message) {
