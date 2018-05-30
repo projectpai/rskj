@@ -28,6 +28,9 @@ import co.rsk.peg.utils.BridgeEventLogger;
 import co.rsk.peg.utils.BridgeEventLoggerImpl;
 import co.rsk.peg.utils.BtcTransactionFormatUtils;
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.lang3.tuple.Pair;
+import org.ethereum.config.BlockchainConfig;
+import org.ethereum.config.BlockchainNetConfig;
 import org.ethereum.core.Block;
 import org.ethereum.core.CallTransaction;
 import org.ethereum.core.Repository;
@@ -159,6 +162,9 @@ public class Bridge extends PrecompiledContracts.PrecompiledContract {
     private final RskSystemProperties config;
     private final BridgeConstants bridgeConstants;
 
+    private BlockchainNetConfig blockchainNetConfig;
+    private BlockchainConfig blockchainConfig;
+
     private org.ethereum.core.Transaction rskTx;
     private org.ethereum.core.Block rskExecutionBlock;
     private Repository repository;
@@ -167,9 +173,11 @@ public class Bridge extends PrecompiledContracts.PrecompiledContract {
     private BridgeSupport bridgeSupport;
 
     public Bridge(RskSystemProperties config, RskAddress contractAddress) {
-        this.config = config;
-        this.bridgeConstants = this.config.getBlockchainConfig().getCommonConstants().getBridgeConstants();
         this.contractAddress = contractAddress;
+
+        this.config = config;
+        this.blockchainNetConfig = config.getBlockchainConfig();
+        this.bridgeConstants = blockchainNetConfig.getCommonConstants().getBridgeConstants();
     }
 
     @Override
@@ -237,6 +245,7 @@ public class Bridge extends PrecompiledContracts.PrecompiledContract {
         this.rskExecutionBlock = rskExecutionBlock;
         this.repository = repository;
         this.logs = logs;
+        this.blockchainConfig = blockchainNetConfig.getConfigForBlock(rskExecutionBlock.getNumber());
     }
 
     @Override
