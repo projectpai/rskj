@@ -17,6 +17,7 @@
  */
 package co.rsk.peg;
 
+import org.ethereum.config.BlockchainConfig;
 import org.ethereum.core.CallTransaction;
 import org.ethereum.db.ByteArrayWrapper;
 
@@ -380,12 +381,18 @@ public enum BridgeMethods {
                         ));
     private final CallTransaction.Function function;
     private final long cost;
+    private final Function<BlockchainConfig, Boolean> _isEnabled;
     private final BridgeMethodExecutor executor;
 
     BridgeMethods(CallTransaction.Function function, long cost, BridgeMethodExecutor executor) {
+        this(function, cost, executor, (blockchainConfig) -> true);
+    }
+
+    BridgeMethods(CallTransaction.Function function, long cost, BridgeMethodExecutor executor, Function<BlockchainConfig, Boolean> isEnabled) {
         this.function = function;
         this.cost = cost;
         this.executor = executor;
+        this._isEnabled = isEnabled;
     }
 
     public static Optional<BridgeMethods> findBySignature(byte[] encoding) {
@@ -394,6 +401,9 @@ public enum BridgeMethods {
 
     public CallTransaction.Function getFunction() {
         return function;
+    }
+    public Boolean isEnabled(BlockchainConfig blockchainConfig) {
+        return this._isEnabled.apply(blockchainConfig);
     }
 
     public long getCost() {
