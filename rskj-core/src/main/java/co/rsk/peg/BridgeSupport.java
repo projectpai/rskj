@@ -35,6 +35,7 @@ import co.rsk.panic.PanicProcessor;
 import co.rsk.peg.Whitelist.LockWhitelist;
 import co.rsk.peg.Whitelist.LockWhitelistEntry;
 import co.rsk.peg.Whitelist.OneOffWhiteListEntry;
+import co.rsk.peg.Whitelist.UnlimitedWhiteListEntry;
 import co.rsk.peg.utils.BridgeEventLogger;
 import co.rsk.peg.utils.BtcTransactionFormatUtils;
 import co.rsk.peg.utils.PartialMerkleTreeFormatUtils;
@@ -1591,6 +1592,14 @@ public class BridgeSupport {
             return -2;
         }
     }
+
+    public Integer addUnlimitedLockWhitelistAddress(Transaction tx, String addressBase58) {
+        try {
+            Address address = Address.fromBase58(btcContext.getParams(), addressBase58);
+            return this.addLockWhitelistAddress(tx, new UnlimitedWhiteListEntry(address));
+        } catch (AddressFormatException e) {
+            return -2;
+        }
     }
 
     public Integer addLockWhitelistAddress(Transaction tx, LockWhitelistEntry entry) {

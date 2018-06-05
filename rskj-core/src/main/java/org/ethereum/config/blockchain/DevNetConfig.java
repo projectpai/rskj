@@ -50,4 +50,6 @@ public class DevNetConfig extends TestNetAfterBridgeSyncConfig {
         return true;
     }
 
+    @Override
+    public boolean isRfs170() { return true; }
 }
