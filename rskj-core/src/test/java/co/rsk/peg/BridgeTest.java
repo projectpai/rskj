@@ -31,14 +31,14 @@ import co.rsk.db.RepositoryImpl;
 import co.rsk.peg.bitcoin.SimpleBtcTransaction;
 import co.rsk.test.World;
 import org.ethereum.config.BlockchainNetConfig;
+import org.ethereum.config.blockchain.GenesisConfig;
 import org.ethereum.config.blockchain.RegTestConfig;
-import org.ethereum.config.blockchain.testnet.TestNetAfterBridgeSyncConfig;
-import org.ethereum.config.blockchain.testnet.TestNetFirstForkConfig;
 import org.ethereum.core.*;
 import org.ethereum.crypto.ECKey;
 import org.ethereum.rpc.TypeConverter;
 import org.ethereum.vm.PrecompiledContracts;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -93,6 +93,11 @@ public class BridgeTest {
         networkParameters = bridgeConstants.getBtcParams();
         BtcECKey fedBTCPrivateKey = ((BridgeRegTestConstants)bridgeConstants).getFederatorPrivateKeys().get(0);
         fedECPrivateKey = ECKey.fromPrivate(fedBTCPrivateKey.getPrivKey());
+    }
+
+    @Before
+    public void resetConfigToRegTest() {
+        config.setBlockchainConfig(new RegTestConfig());
     }
 
     @Test
@@ -1371,7 +1376,9 @@ public class BridgeTest {
 
     @Test
     public void addUnlimitedLockWhitelistAddressBeforeRfs170Fork() {
-        config.setBlockchainConfig(new TestNetAfterBridgeSyncConfig());
+        GenesisConfig mockedConfig = spy(new GenesisConfig());
+        when(mockedConfig.isRfs170()).thenReturn(false);
+        config.setBlockchainConfig(mockedConfig);
 
         Repository repository = new RepositoryImpl(config);
         Repository track = repository.startTracking();
@@ -1390,7 +1397,9 @@ public class BridgeTest {
 
     @Test
     public void addUnlimitedLockWhitelistAddressAfterRfs170Fork() {
-        config.setBlockchainConfig(new TestNetFirstForkConfig());
+        GenesisConfig mockedConfig = spy(new GenesisConfig());
+        when(mockedConfig.isRfs170()).thenReturn(true);
+        config.setBlockchainConfig(mockedConfig);
 
         Repository repository = new RepositoryImpl(config);
         Repository track = repository.startTracking();
