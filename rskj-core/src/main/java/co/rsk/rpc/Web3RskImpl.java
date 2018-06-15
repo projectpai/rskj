@@ -66,6 +66,7 @@ public class Web3RskImpl extends Web3Impl {
     private static final Logger logger = LoggerFactory.getLogger("web3");
     private final NetworkStateExporter networkStateExporter;
     private final BlockStore blockStore;
+    private final NetworkParameters networkParameters;
 
     public Web3RskImpl(Ethereum eth,
                        Blockchain blockchain,
@@ -89,6 +90,7 @@ public class Web3RskImpl extends Web3Impl {
         super(eth, blockchain, transactionPool, blockStore, receiptStore, properties, minerClient, minerServer, personalModule, ethModule, txPoolModule, channelManager, repository, peerScoringManager, peerServer, nodeBlockProcessor, hashRateCalculator, configCapabilities);
         this.networkStateExporter = networkStateExporter;
         this.blockStore = blockStore;
+        this.networkParameters = properties.getBlockchainConfig().getCommonConstants().getBridgeConstants().getBtcParams();
     }
 
     public MinerWork mnr_getWork() {
@@ -100,10 +102,9 @@ public class Web3RskImpl extends Web3Impl {
     public SubmittedBlockInfo mnr_submitBitcoinBlock(String bitcoinBlockHex) {
         logger.debug("mnr_submitBitcoinBlock(): {}", bitcoinBlockHex.length());
 
-        NetworkParameters params = RegTestParams.get();
-        new Context(params);
+        new Context(networkParameters);
 
-        BtcBlock bitcoinBlock = getBtcBlock(bitcoinBlockHex, params);
+        BtcBlock bitcoinBlock = getBtcBlock(bitcoinBlockHex, networkParameters);
         BtcTransaction coinbase = bitcoinBlock.getTransactions().get(0);
 
         String blockHashForMergedMining = extractBlockHashForMergedMining(coinbase);
