@@ -33,6 +33,7 @@ import co.rsk.net.MessageHandler;
 import co.rsk.net.Metrics;
 import co.rsk.net.discovery.UDPServer;
 import co.rsk.net.handler.TxHandler;
+import co.rsk.paicoin.PaicoinService;
 import org.ethereum.cli.CLIInterface;
 import org.ethereum.config.DefaultConfig;
 import org.ethereum.core.*;
@@ -73,6 +74,7 @@ public class Start {
     private final BlockProcessor nodeBlockProcessor;
     private final TransactionPool transactionPool;
     private final SyncPool.PeerClientFactory peerClientFactory;
+    private final PaicoinService paicoinService;
 
     public static void main(String[] args) throws Exception {
         ApplicationContext ctx = new AnnotationConfigApplicationContext(DefaultConfig.class);
@@ -97,7 +99,8 @@ public class Start {
                  TxHandler txHandler,
                  BlockProcessor nodeBlockProcessor,
                  TransactionPool transactionPool,
-                 SyncPool.PeerClientFactory peerClientFactory) {
+                 SyncPool.PeerClientFactory peerClientFactory,
+                 PaicoinService paicoinService) {
         this.rsk = rsk;
         this.udpServer = udpServer;
         this.minerServer = minerServer;
@@ -114,6 +117,7 @@ public class Start {
         this.nodeBlockProcessor = nodeBlockProcessor;
         this.transactionPool = transactionPool;
         this.peerClientFactory = peerClientFactory;
+        this.paicoinService = paicoinService;
     }
 
     public void startNode(String[] args) throws Exception {
@@ -180,7 +184,8 @@ public class Start {
                 minerClient.mine();
             }
         }
-
+        if (rskSystemProperties.isPaicoinEnabled())
+            paicoinService.start();
     }
 
     private void startRPCServer() throws InterruptedException {
@@ -209,6 +214,7 @@ public class Start {
 
     public void stop() {
         logger.info("Shutting down RSK node");
+        paicoinService.stop();
         syncPool.stop();
         if (rskSystemProperties.isRpcEnabled()) {
             web3Service.stop();

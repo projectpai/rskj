@@ -24,6 +24,7 @@ import co.rsk.net.eth.MessageRecorder;
 import co.rsk.net.eth.WriterMessageRecorder;
 import co.rsk.rpc.ModuleDescription;
 import com.typesafe.config.Config;
+import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigObject;
 import org.ethereum.config.Constants;
 import org.ethereum.config.SystemProperties;
@@ -41,9 +42,12 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import static co.rsk.paicoin.ImportUtils.decodeHex;
 
 /**
  * Created by ajlopez on 3/3/2016.
@@ -388,6 +392,74 @@ public class RskSystemProperties extends SystemProperties {
     // its fixed, cannot be set by config file
     public int getChunkSize() {
         return CHUNK_SIZE;
+    }
+
+    public boolean isPaicoinEnabled() {
+        return configFromFiles.hasPath("paicoin.enabled") ? configFromFiles.getBoolean("paicoin.enabled") : false;
+    }
+
+    public String getPaicoinUrl() {
+        return configFromFiles.getString("paicoin.url");
+    }
+
+    public String getPaicoinUsername() {
+        return configFromFiles.getString("paicoin.username");
+    }
+
+    public String getPaicoinPassword() {
+        return configFromFiles.getString("paicoin.password");
+    }
+
+    public Duration getPaicoinPollInterval() {
+        return configFromFiles.getDuration("paicoin.pollInterval");
+    }
+
+    private RskAddress getRskAddressParam(String paramName) {
+        byte[] key = decodeHex(configFromFiles.getString(paramName));
+        byte[] address;
+        switch (key.length) {
+            case 20:
+                address = key;
+                break;
+            case 32:
+                address = ECKey.fromPrivate(key).getAddress();
+                break;
+            case 33:
+            case 65:
+                address = ECKey.fromPublicOnly(key).getAddress();
+                break;
+            default:
+                throw new ConfigException.BadValue(paramName, "Address must be 20, 32 or 65 bytes long");
+        }
+        return new RskAddress(address);
+    }
+
+    public RskAddress getPaicoinWhitelistAuthorizeAddr() {
+        return getRskAddressParam("paicoin.whitelistAuthorizeAddr");
+    }
+
+    public RskAddress getPaicoinImportAddr() {
+        return getRskAddressParam("paicoin.importAddr");
+    }
+
+    public int getPaicoinMaxTransferCoins() {
+        return configFromFiles.getInt("paicoin.maxTransferCoins");
+    }
+
+    public int getPaicoinHeadersPerBlock() {
+        return configFromFiles.getInt("paicoin.headersPerBlock");
+    }
+
+    public Duration getPaicoinReceiveHeadersInterval() {
+        return configFromFiles.getDuration("paicoin.receiveHeadersInterval");
+    }
+
+    public int getPaicoinUpdateCollectionsMaxBlocksCount() {
+        return configFromFiles.getInt("paicoin.updateCollectionsMaxBlocksCount");
+    }
+
+    public Duration getPaicoinUpdateCollectionsInterval() {
+        return configFromFiles.getDuration("paicoin.updateCollectionsInterval");
     }
 
     public VmConfig getVmConfig() {

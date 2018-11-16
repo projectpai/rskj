@@ -151,7 +151,7 @@ public class MinerClientImpl implements MinerClient {
             return false;
         }
 
-        co.rsk.bitcoinj.core.NetworkParameters bitcoinNetworkParameters = co.rsk.bitcoinj.params.RegTestParams.get();
+        co.rsk.bitcoinj.core.NetworkParameters bitcoinNetworkParameters = config.getBlockchainConfig().getCommonConstants().getBridgeConstants().getBtcParams();
         co.rsk.bitcoinj.core.BtcTransaction bitcoinMergedMiningCoinbaseTransaction = MinerUtils.getBitcoinMergedMiningCoinbaseTransaction(bitcoinNetworkParameters, work);
         co.rsk.bitcoinj.core.BtcBlock bitcoinMergedMiningBlock = MinerUtils.getBitcoinMergedMiningBlock(bitcoinNetworkParameters, bitcoinMergedMiningCoinbaseTransaction);
 
