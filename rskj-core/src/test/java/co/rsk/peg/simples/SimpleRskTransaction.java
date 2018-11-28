@@ -24,6 +24,9 @@ import co.rsk.crypto.Keccak256;
 import org.ethereum.core.Transaction;
 import org.ethereum.crypto.ECKey;
 import org.ethereum.crypto.Keccak256Helper;
+import org.ethereum.util.ByteUtil;
+
+import static org.apache.commons.lang3.ArrayUtils.EMPTY_BYTE_ARRAY;
 
 /**
  * Created by ajlopez on 6/8/2016.
@@ -32,7 +35,7 @@ public class SimpleRskTransaction extends Transaction {
     private final Keccak256 hash;
 
     public SimpleRskTransaction(byte[] hash) {
-        super(null);
+        super(EMPTY_BYTE_ARRAY, EMPTY_BYTE_ARRAY, EMPTY_BYTE_ARRAY, EMPTY_BYTE_ARRAY, EMPTY_BYTE_ARRAY, EMPTY_BYTE_ARRAY);
         this.hash = hash == null ? null : new Keccak256(hash);
         this.sender = new RskAddress(ECKey.fromPrivate(Keccak256Helper.keccak256("cow".getBytes())).getAddress());
     }
@@ -43,5 +46,19 @@ public class SimpleRskTransaction extends Transaction {
     @Override
     public Coin getValue() {
         return Coin.valueOf(10000000);
+    }
+
+    public String toString() {
+        return "TransactionData [" + "hash=" + (hash == null ? "" : ByteUtil.toHexString(hash.getBytes())) +
+            "  nonce=" + ByteUtil.toHexString(getNonce()) +
+            ", gasPrice=" + getGasPrice() +
+            ", gas=" + ByteUtil.toHexString(getGasLimit()) +
+            ", receiveAddress=" + getReceiveAddress() +
+            ", value=" + getValue() +
+            ", data=" + ByteUtil.toHexString(getData()) +
+            ", signatureV=" +
+            ", signatureR=" +
+            ", signatureS=" +
+            "]";
     }
 }

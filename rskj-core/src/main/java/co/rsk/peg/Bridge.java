@@ -63,7 +63,7 @@ public class Bridge extends PrecompiledContracts.PrecompiledContract {
     // No parameters
     public static final CallTransaction.Function UPDATE_COLLECTIONS = CallTransaction.Function.fromSignature("updateCollections", new String[]{}, new String[]{});
     // Parameters: an array of bitcoin blocks serialized with the bitcoin wire protocol format
-    public static final CallTransaction.Function RECEIVE_HEADERS = CallTransaction.Function.fromSignature("receiveHeaders", new String[]{"bytes[]"}, new String[]{});
+    public static final CallTransaction.Function RECEIVE_HEADERS = CallTransaction.Function.fromSignature("receiveHeaders", new String[]{"bytes[]"}, new String[]{"string[]"});
     // Parameters:
     // - A bitcoin tx, serialized with the bitcoin wire protocol format
     // - The bitcoin block height that contains the tx
@@ -143,7 +143,7 @@ public class Bridge extends PrecompiledContracts.PrecompiledContract {
     // Adds the given address to the lock whitelist
     public static final CallTransaction.Function ADD_LOCK_WHITELIST_ADDRESS = CallTransaction.Function.fromSignature("addLockWhitelistAddress", new String[]{"string", "int256"}, new String[]{"int256"});
     // Adds the given address to the lock whitelist
-    public static final CallTransaction.Function REMOVE_LOCK_WHITELIST_ADDRESS = CallTransaction.Function.fromSignature("removeLockWhitelistAddress", new String[]{"string"}, new String[]{"int256"});
+    public static final CallTransaction.Function REMOVE_LOCK_WHITELIST_ADDRESS = CallTransaction.Function.fromSignature("removeLockWhitelistAddress", new String[]{"string"}, new String[]{"int"});
 
     public static final CallTransaction.Function SET_LOCK_WHITELIST_DISABLE_BLOCK_DELAY = CallTransaction.Function.fromSignature("setLockWhitelistDisableBlockDelay", new String[]{"int256"}, new String[]{"int256"});
 
@@ -360,23 +360,24 @@ public class Bridge extends PrecompiledContracts.PrecompiledContract {
         }
     }
 
-    public void receiveHeaders(Object[] args)
+    public Object[] receiveHeaders(Object[] args)
     {
         logger.trace("receiveHeaders");
 
         Object[] btcBlockSerializedArray = (Object[]) args[0];
         BtcBlock[] btcBlockArray = new BtcBlock[btcBlockSerializedArray.length];
+        MessageSerializer serializer = bridgeConstants.getBtcParams().getDefaultSerializer();
         for (int i = 0; i < btcBlockSerializedArray.length; i++) {
             byte[] btcBlockSerialized = (byte[]) btcBlockSerializedArray[i];
             try {
-                BtcBlock header = bridgeConstants.getBtcParams().getDefaultSerializer().makeBlock(btcBlockSerialized);
+                BtcBlock header = serializer.makeBlock(btcBlockSerialized);
                 btcBlockArray[i] = header;
             } catch (ProtocolException e) {
                 throw new BridgeIllegalArgumentException("Block " + i + " could not be parsed " + Hex.toHexString(btcBlockSerialized), e);
             }
         }
         try {
-            bridgeSupport.receiveHeaders(btcBlockArray);
+            return bridgeSupport.receiveHeaders(btcBlockArray);
         } catch (Exception e) {
             logger.warn("Exception adding header", e);
             throw new RuntimeException("Exception adding header", e);
@@ -775,7 +776,7 @@ public class Bridge extends PrecompiledContracts.PrecompiledContract {
         return address;
     }
 
-    public Integer addLockWhitelistAddress(Object[] args)
+    public BigInteger addLockWhitelistAddress(Object[] args)
     {
         logger.trace("addLockWhitelistAddress");
 
@@ -783,10 +784,10 @@ public class Bridge extends PrecompiledContracts.PrecompiledContract {
         BigInteger maxTransferValue;
         try {
             addressBase58 = (String) args[0];
-            maxTransferValue = (BigInteger) args[1];
+            maxTransferValue = (BigInteger)args[1];
         } catch (Exception e) {
             logger.warn("Exception in addLockWhitelistAddress: {}", e.getMessage());
-            return 0;
+            return BigInteger.valueOf(-4);
         }
 
         return bridgeSupport.addLockWhitelistAddress(rskTx, addressBase58, maxTransferValue);
@@ -801,7 +802,7 @@ public class Bridge extends PrecompiledContracts.PrecompiledContract {
             addressBase58 = (String) args[0];
         } catch (Exception e) {
             logger.warn("Exception in removeLockWhitelistAddress: {}", e.getMessage());
-            return 0;
+            return -4;
         }
 
         return bridgeSupport.removeLockWhitelistAddress(rskTx, addressBase58);

@@ -75,7 +75,7 @@ public class LockWhitelistTest {
 
         Address randomAddress = Address.fromBase58(
           NetworkParameters.fromID(NetworkParameters.ID_REGTEST),
-          "n3PLxDiwWqa5uH7fSbHCxS6VAjD9Y7Rwkj"
+          "MiqW8Ays6axQaiRMQ7FsxVrMRATK8ir6Ny"
         );
 
         Assert.assertFalse(whitelist.isWhitelisted(randomAddress));
@@ -86,18 +86,18 @@ public class LockWhitelistTest {
     public void add() {
         Address randomAddress = Address.fromBase58(
                 NetworkParameters.fromID(NetworkParameters.ID_REGTEST),
-                "n3WzdjG7S2GjDbY1pJYxsY1VSQDkm4KDcm"
+                "MiqW8Ays6axQaiRMQ7FsxVrMRATK8ir6Ny"
         );
 
         Assert.assertFalse(whitelist.isWhitelisted(randomAddress));
         Assert.assertFalse(whitelist.isWhitelisted(randomAddress.getHash160()));
 
-        Assert.assertTrue(whitelist.put(randomAddress, Coin.CENT));
+        Assert.assertEquals(whitelist.put(randomAddress, Coin.CENT), Coin.ZERO);
 
         Assert.assertTrue(whitelist.isWhitelisted(randomAddress));
         Assert.assertTrue(whitelist.isWhitelisted(randomAddress.getHash160()));
 
-        Assert.assertFalse(whitelist.put(randomAddress, Coin.CENT));
+        Assert.assertEquals(whitelist.put(randomAddress, Coin.MICROCOIN), Coin.CENT);
     }
 
     @Test

@@ -23,14 +23,12 @@ import co.rsk.bitcoinj.core.Coin;
 import co.rsk.bitcoinj.core.NetworkParameters;
 import co.rsk.peg.AddressBasedAuthorizer;
 import co.rsk.peg.Federation;
-import com.google.common.collect.Lists;
 import org.ethereum.crypto.ECKey;
 import org.spongycastle.util.encoders.Hex;
 
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class BridgeTestNetConstants extends BridgeConstants {
     private static BridgeTestNetConstants instance = new BridgeTestNetConstants();
@@ -38,18 +36,14 @@ public class BridgeTestNetConstants extends BridgeConstants {
     BridgeTestNetConstants() {
         btcParamsString = NetworkParameters.ID_TESTNET;
 
-         BtcECKey federator0PublicKey = BtcECKey.fromPublicOnly(Hex.decode("03ade011a7d730a981f30e1d314d57d1a60e76739ec1f12582f70967054576ec15"));
-         BtcECKey federator1PublicKey = BtcECKey.fromPublicOnly(Hex.decode("024991d7f49c94b000c516727d308721c471d0783ced0d11e6b217f48e079a26f8"));
-         BtcECKey federator2PublicKey = BtcECKey.fromPublicOnly(Hex.decode("03c0382876de53001cba785de593ab61171d4e9670f33108d328e8bd26031fe145"));
-         BtcECKey federator3PublicKey = BtcECKey.fromPublicOnly(Hex.decode("0228ccb924b660734634a67c9d68f05cadca949f8f3adddb4c6e33ce9d945dbadc"));
-         BtcECKey federator4PublicKey = BtcECKey.fromPublicOnly(Hex.decode("024c749a7f6f98159fd35ba49b3d628f9b297c8f7dfbb045be9fff4010ab366cc1"));
-         BtcECKey federator5PublicKey = BtcECKey.fromPublicOnly(Hex.decode("02d6284a04c1d0c2f50cb7c9fd599ad778eb850997ebcc672bd65a0ff2c2ff6ab2"));
-         BtcECKey federator6PublicKey = BtcECKey.fromPublicOnly(Hex.decode("029c0f35b3507ec75ef264abc0d4728a334cc459273462c9b845774d8aba251173"));
-
-        List<BtcECKey> genesisFederationPublicKeys = Lists.newArrayList(
-                federator0PublicKey, federator1PublicKey, federator2PublicKey,
-                federator3PublicKey, federator4PublicKey, federator5PublicKey,
-                federator6PublicKey
+        List<BtcECKey> genesisFederationPublicKeys = Arrays.asList(
+            BtcECKey.fromPublicOnly(Hex.decode("03cafd7627f96c04e7b2b3b38a41bb2e6e798901c62a3559f6aab8831ddfb637b8")),
+            BtcECKey.fromPublicOnly(Hex.decode("038a9131b5d443c3b11ae843b96fe37766f1f48c4336c0cf050d14c081394ddc74")),
+            BtcECKey.fromPublicOnly(Hex.decode("02b3e9b3814b50927df4a7522723c068b14736a69299fc87acb66f2aaaa18d2eca")),
+            BtcECKey.fromPublicOnly(Hex.decode("02283d343271c711dfe4c1b906f5ed6700a14ad199fd97bb90bd65eefdd2b31517")),
+            BtcECKey.fromPublicOnly(Hex.decode("02e63e367338e4c8bd0392f95f2d42e2ad8f0518aa0f84250ae61aff80de5b1cee")),
+            BtcECKey.fromPublicOnly(Hex.decode("038e4051fa0c0681c0bcfc1a50f677892a82483fdd2354db57c888dda98374e73f")),
+            BtcECKey.fromPublicOnly(Hex.decode("0229b62475f32190eb04db43c89923b75e4072b75bd705701196ff5918103ffa82"))
         );
 
         // Currently set to:
@@ -75,11 +69,11 @@ public class BridgeTestNetConstants extends BridgeConstants {
         minimumReleaseTxValue = Coin.valueOf(500000);
 
         // Passphrases are kept private
-        List<ECKey> federationChangeAuthorizedKeys = Arrays.stream(new String[]{
-            "04948cfbe12df6fe502d03299d9d6d50858adb37f4c2bf2f66baad02f22de674748b16b7338e670f1e67552b4924837b282ee4183448e18af1b75b1ca79c8510ce",
-            "044a3440ffe5cd02e2e57e15808dc4cf402912340d4592e83c7cb6717071b975e58eb76eb72f3568c27764b0c63fbc06a865c7d0ebdf490158acce311430a59d84",
-            "042f406d5d438d6635ab349783089da883dc150258cf33461683baf4d291ce1c8b1f9a2efa34c5e9c6a52b4e41be5f9da59720a355a7c485d6f3282c6e02dba48b"
-        }).map(hex -> ECKey.fromPublicOnly(Hex.decode(hex))).collect(Collectors.toList());
+        List<ECKey> federationChangeAuthorizedKeys = Arrays.asList(
+            ECKey.fromPublicOnly(Hex.decode("04a81f574f70c0be16bd9f42bf7598262ec8c70221788bffc38c235b47d58db04d3295a3f23eff201f4e298a8226a45efb37109040e0ac866354b2e1a5ddd470fb")),
+            ECKey.fromPublicOnly(Hex.decode("04882c54e90d5bacd64a7cfc7cc826a82f318d1e03c5707f1d6c94e524f1f9f5f4e57517aa1634a3cbd6a5eb5c05f6888f2b9b9a89b814d3fc4d1097bba1aeb191")),
+            ECKey.fromPublicOnly(Hex.decode("049131b98cf8cc9512748fa136604f0f92ed537244da07cb8c862f2ef0037b6acc9c890fffd9af4b51135012a9dbf9af30b1e7dffef3e7dad5e4780aa97471113e"))
+        );
 
         federationChangeAuthorizer = new AddressBasedAuthorizer(
                 federationChangeAuthorizedKeys,
@@ -87,9 +81,9 @@ public class BridgeTestNetConstants extends BridgeConstants {
         );
 
         // Passphrases are kept private
-        List<ECKey> lockWhitelistAuthorizedKeys = Arrays.stream(new String[]{
-            "04fb61525707d63459ab110835977347e270b14e2976b21239dae8e7f4b285f829a6a504659b4c98f74fd53793302bedf2ac8a5a6a640d950fc45af0ab24f918ed"
-        }).map(hex -> ECKey.fromPublicOnly(Hex.decode(hex))).collect(Collectors.toList());
+        List<ECKey> lockWhitelistAuthorizedKeys = Arrays.asList(
+            ECKey.fromPublicOnly(Hex.decode("04eb34a3dfd033894d812c407c6d2d598d2fc275b15b33faa80e6b333a019a16db8168d83ac206c651de472c94253c2907c8a7788e80a24c5bb99c337f888fbd17"))
+        );
 
         lockWhitelistChangeAuthorizer = new AddressBasedAuthorizer(
                 lockWhitelistAuthorizedKeys,
@@ -101,18 +95,18 @@ public class BridgeTestNetConstants extends BridgeConstants {
         fundsMigrationAgeSinceActivationBegin = 60L;
         fundsMigrationAgeSinceActivationEnd = 900L;
 
-        List<ECKey> feePerKbAuthorizedKeys = Arrays.stream(new String[]{
-            "04522d38f7afe849b2f34763316c2d4d6b265b6552f25c4bbc892cba3b2851cffe4a4a43a2ea5f5ce2bbb5ce5f4e27ad33127cdf1f9f5dba9fc57798d19472f6af",
-            "04d2216c572325a6063e424b589fdd9cf9a997e6ded52a22b47f680022ba1fabf559f5e6b4ab1a4575e730a998562376be850907a9d7aded07d428c7ac907678e8",
-            "0422576758ce04ea376bc766c55cd57cf18e90c7cd96d37149c7bf956b6f7c510b14aeed3be18411ac9085129d5405830f59d26d5e63d7c9ead7980fd83966adea"
-        }).map(hex -> ECKey.fromPublicOnly(Hex.decode(hex))).collect(Collectors.toList());
+        List<ECKey> feePerKbAuthorizedKeys = Arrays.asList(
+            ECKey.fromPublicOnly(Hex.decode("04e7dc244baf11b40f033bfd915ddd097f306c49ca88c44b01f8ade349845a19bc7cd9b4dd9ea0065b773073a5dcd71740064b923f458d6c480a3ec992ad5d577b")),
+            ECKey.fromPublicOnly(Hex.decode("04ccc6d9aeecf4031dab559fb73756b2c51e7928ce0ecfc46e3eda269c1c34c3b47412dd6b2ab10030b236eeae83f467d59e0088e612ea4d8d01841357af8993a4")),
+            ECKey.fromPublicOnly(Hex.decode("04b0abe7ff8453240e3bf8adef4f64d520cb269e33198fea48016dcd288cfc7fabd6672e935a103390c86ab97b25ce4d54f45a4763427cc3ade883fc478fdda23f"))
+        );
 
         feePerKbChangeAuthorizer = new AddressBasedAuthorizer(
                 feePerKbAuthorizedKeys,
                 AddressBasedAuthorizer.MinimumRequiredCalculation.MAJORITY
         );
 
-        genesisFeePerKb = Coin.MILLICOIN;
+        genesisFeePerKb = Coin.MICROCOIN.multiply(10);
     }
 
     public static BridgeTestNetConstants getInstance() {

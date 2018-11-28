@@ -80,13 +80,14 @@ public class LockWhitelist {
         return whitelistedAddresses.get(address);
     }
 
-    public boolean put(Address address, Coin maxTransferValue) {
-        if (whitelistedAddresses.containsKey(address)) {
-            return false;
+    public Coin put(Address address, Coin maxTransferValue) {
+        Coin coins = whitelistedAddresses.get(address);
+        if (coins != null) {
+            return coins;
         }
 
         whitelistedAddresses.put(address, maxTransferValue);
-        return true;
+        return Coin.ZERO;
     }
 
     public boolean remove(Address address) {

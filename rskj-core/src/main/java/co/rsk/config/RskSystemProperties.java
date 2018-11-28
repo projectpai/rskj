@@ -442,8 +442,8 @@ public class RskSystemProperties extends SystemProperties {
         return getRskAddressParam("paicoin.importAddr");
     }
 
-    public int getPaicoinMaxTransferCoins() {
-        return configFromFiles.getInt("paicoin.maxTransferCoins");
+    public int getPaicoinsMultiple() {
+        return configFromFiles.getInt("paicoin.paicoinsMultiple");
     }
 
     public int getPaicoinHeadersPerBlock() {

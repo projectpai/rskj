@@ -652,9 +652,9 @@ public class BridgeSerializationUtilsTest {
 
         NetworkParameters params = NetworkParameters.fromID(NetworkParameters.ID_REGTEST);
 
-        Address a1 = Address.fromBase58(params, "mynmcQfJnVjheAqh9XL6htnxPZnaDFbqkB");
-        Address a2 = Address.fromBase58(params, "mfrfxeo5L2f5NDURS6YTtCNfVw2t5HAfty");
-        Address a3 = Address.fromBase58(params, "myw7AMh5mpKHao6MArhn7EvkeASGsGJzrZ");
+        Address a1 = Address.fromBase58(params, "MYFWkuEMKRW7C1EL6Ck6TuvJVjL8FAGKoD");
+        Address a2 = Address.fromBase58(params, "MvAiJ5o1oSGvMv9ra7d8AhRAuqYkd8Qi4o");
+        Address a3 = Address.fromBase58(params, "MdqwNFeqesoUEm1aF1YP7SYaVyTNgk9dob");
         List<ReleaseRequestQueue.Entry> expectedEntries = Arrays.asList(
                 new ReleaseRequestQueue.Entry(a1, Coin.valueOf(10)),
                 new ReleaseRequestQueue.Entry(a2, Coin.valueOf(7)),
@@ -732,20 +732,20 @@ public class BridgeSerializationUtilsTest {
         NetworkParameters params = NetworkParameters.fromID(NetworkParameters.ID_REGTEST);
 
         BtcTransaction input = new BtcTransaction(params);
-        input.addOutput(Coin.FIFTY_COINS, Address.fromBase58(params, "mvc8mwDcdLEq2jGqrL43Ub3sxTR13tB8LL"));
+        input.addOutput(Coin.FIFTY_COINS, Address.fromBase58(params, "MXUEfCaT75m4siEEMQX4yWHL77efh81fG6"));
 
         BtcTransaction t1 = new BtcTransaction(params);
         t1.addInput(input.getOutput(0));
-        t1.addOutput(Coin.COIN, Address.fromBase58(params, "n3CaAPu2PR7FDdGK8tFwe8thr7hV7zz599"));
+        t1.addOutput(Coin.COIN, Address.fromBase58(params, "MXbNgi9TzW9gscSSy1iSkyXoDvJ3gUCsp7"));
         BtcTransaction t2 = new BtcTransaction(params);
         t2.addInput(input.getOutput(0));
-        t2.addOutput(Coin.COIN.multiply(10), Address.fromBase58(params, "n3CaAPu2PR7FDdGK8tFwe8thr7hV7zz599"));
+        t2.addOutput(Coin.COIN.multiply(10), Address.fromBase58(params, "MbqTBR9XXvUxHtQTATTTLrSajdPD5kiFWV"));
         BtcTransaction t3 = new BtcTransaction(params);
         t3.addInput(input.getOutput(0));
-        t3.addOutput(Coin.valueOf(15), Address.fromBase58(params, "n3CaAPu2PR7FDdGK8tFwe8thr7hV7zz599"));
+        t3.addOutput(Coin.valueOf(15), Address.fromBase58(params, "MfePF2BsgHHhWZV2DFQhM3s8mbVc4D7p49"));
         BtcTransaction t4 = new BtcTransaction(params);
         t4.addInput(input.getOutput(0));
-        t4.addOutput(Coin.MILLICOIN, Address.fromBase58(params, "n3CaAPu2PR7FDdGK8tFwe8thr7hV7zz599"));
+        t4.addOutput(Coin.MILLICOIN, Address.fromBase58(params, "MYSB9fRgkYvaciLz28MMCAGZvqHtDbKXmJ"));
 
         Set<ReleaseTransactionSet.Entry> expectedEntries = new HashSet<>(Arrays.asList(
                 new ReleaseTransactionSet.Entry(t1, 32L),

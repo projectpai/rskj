@@ -147,7 +147,7 @@ public class BridgeSupport {
      * Receives an array of serialized Bitcoin block headers and adds them to the internal BlockChain structure.
      * @param headers The bitcoin headers
      */
-    public void receiveHeaders(BtcBlock[] headers) {
+    public Object[] receiveHeaders(BtcBlock[] headers) {
         if (headers.length > 0) {
             logger.debug("Received {} headers. First {}, last {}.", headers.length, headers[0].getHash(), headers[headers.length - 1].getHash());
         } else {
@@ -155,15 +155,19 @@ public class BridgeSupport {
         }
 
         Context.propagate(btcContext);
+        List<Sha256Hash> blockHashes = new ArrayList<>(headers.length);
         for (int i = 0; i < headers.length; i++) {
             try {
-                btcBlockChain.add(headers[i]);
+                BtcBlock block = headers[i];
+                if (btcBlockChain.addBlock(block).exists())
+                    blockHashes.add(block.getHash());
             } catch (Exception e) {
                 // If we tray to add an orphan header bitcoinj throws an exception
                 // This catches that case and any other exception that may be thrown
                 logger.warn("Exception adding btc header", e);
             }
         }
+        return blockHashes.stream().map(Sha256Hash::toString).toArray();
     }
 
     /**
@@ -1609,17 +1613,17 @@ public class BridgeSupport {
 
     /**
      * Adds the given address to the lock whitelist.
-     * Returns 1 upon success, or -1 if the address was
+     * Returns 0 upon success, or current maxTransferValue if the address was
      * already in the whitelist.
      * @param addressBase58 the base58-encoded address to add to the whitelist
      * @param maxTransferValue the max amount of satoshis enabled to transfer for this address
-     * @return 1 upon success, -1 if the address was already
+     * @return 0 upon success, current maxTransferValue if the address was already
      * in the whitelist, -2 if address is invalid
      * LOCK_WHITELIST_GENERIC_ERROR_CODE otherwise.
      */
-    public Integer addLockWhitelistAddress(Transaction tx, String addressBase58, BigInteger maxTransferValue) {
+    public BigInteger addLockWhitelistAddress(Transaction tx, String addressBase58, BigInteger maxTransferValue) {
         if (!isLockWhitelistChangeAuthorized(tx)) {
-            return LOCK_WHITELIST_GENERIC_ERROR_CODE;
+            return BigInteger.valueOf(LOCK_WHITELIST_GENERIC_ERROR_CODE);
         }
 
         LockWhitelist whitelist = provider.getLockWhitelist();
@@ -1627,17 +1631,14 @@ public class BridgeSupport {
         try {
             Address address = Address.fromBase58(btcContext.getParams(), addressBase58);
 
-            if (whitelist.isWhitelisted(address)) {
-                return -1;
-            }
-            whitelist.put(address, Coin.valueOf(maxTransferValue.longValueExact()));
-            return 1;
+            Coin coins = whitelist.put(address, Coin.valueOf(maxTransferValue.longValueExact()));
+            return BigInteger.valueOf(coins.getValue());
         } catch (AddressFormatException e) {
-            return -2;
+            return BigInteger.valueOf(-2);
         } catch (Exception e) {
             logger.error("Unexpected error in addLockWhitelistAddress: {}", e.getMessage());
             panicProcessor.panic("lock-whitelist", e.getMessage());
-            return 0;
+            return BigInteger.valueOf(-3);
         }
     }
 
@@ -1649,10 +1650,10 @@ public class BridgeSupport {
 
     /**
      * Removes the given address from the lock whitelist.
-     * Returns 1 upon success, or -1 if the address was
+     * Returns 0 upon success, or -1 if the address was
      * not in the whitelist.
      * @param addressBase58 the base58-encoded address to remove from the whitelist
-     * @return 1 upon success, -1 if the address was not
+     * @return 0 upon success, -1 if the address was not
      * in the whitelist, -2 if the address is invalid,
      * LOCK_WHITELIST_GENERIC_ERROR_CODE otherwise.
      */
@@ -1670,13 +1671,13 @@ public class BridgeSupport {
                 return -1;
             }
 
-            return 1;
+            return 0;
         } catch (AddressFormatException e) {
             return -2;
         } catch (Exception e) {
             logger.error("Unexpected error in removeLockWhitelistAddress: {}", e.getMessage());
             panicProcessor.panic("lock-whitelist", e.getMessage());
-            return 0;
+            return -3;
         }
     }
 

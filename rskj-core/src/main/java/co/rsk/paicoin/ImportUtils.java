@@ -23,9 +23,27 @@ public final class ImportUtils {
 
     public final static MediaType JSON_MEDIA_TYPE = MediaType.parse("application/json");
 
+    public static <T> int size(List<T> list) {
+        return (list != null ? list.size() : 0);
+    }
+
+    public static <T> T first(List<T> list) {
+        int size = size(list);
+        return (size > 0 ? list.get(0) : null);
+    }
+
     public static <T> T last(List<T> list) {
-        int size = list != null ? list.size() : 0;
+        int size = size(list);
         return (size > 0 ? list.get(size - 1) : null);
+    }
+
+    public static co.rsk.bitcoinj.core.Coin round(co.rsk.bitcoinj.core.Coin coins, int multiple) {
+        long value = coins.getValue();
+        long n = multiple * co.rsk.bitcoinj.core.Coin.COIN.getValue();
+        long rem = value % n;
+        if (rem == 0)
+            return coins;
+        return co.rsk.bitcoinj.core.Coin.valueOf(value + (n - rem));
     }
 
     public static byte[] decodeHex(String strHex) {

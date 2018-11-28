@@ -53,7 +53,7 @@ public class PaicoinClient {
         Object error = result.get("error");
         if (error == null)
             return false;
-        LOGGER.debug("{}: {}", message, ((JSONObject)error).get("message"));
+        LOGGER.error("{}: {}", message, ((JSONObject)error).get("message"));
         return true;
     }
 

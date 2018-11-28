@@ -7,10 +7,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
@@ -18,6 +17,7 @@ import java.util.TreeMap;
 import co.rsk.bitcoinj.core.Address;
 import co.rsk.bitcoinj.core.BtcBlock;
 import co.rsk.bitcoinj.core.BtcTransaction;
+import co.rsk.bitcoinj.core.Coin;
 import co.rsk.bitcoinj.core.MessageSerializer;
 import co.rsk.bitcoinj.core.PartialMerkleTree;
 import co.rsk.bitcoinj.core.Sha256Hash;
@@ -31,20 +31,16 @@ import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import static co.rsk.bitcoinj.core.Utils.sha256hash160;
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
+import static co.rsk.paicoin.ImportUtils.round;
 
 
 @Component
-@Scope(SCOPE_PROTOTYPE)
 public class PaicoinService {
 
     private final static Logger LOGGER = LoggerFactory.getLogger("paicoin-service");
-
-    private final static int BLOCK_HEADER_SIZE = 80;
 
     private final BridgeClient bridgeClient;
     private final Timer timer;
@@ -55,6 +51,7 @@ public class PaicoinService {
     private final MessageSerializer paicoinDeserializer;
     private final int updateCollectionsMaxBlocksCount;
     private final Duration updateCollectionsInterval;
+    private final int paicoinsMultiple;
 
     private Instant receiveHeadersTimestamp;
     private long blocksCount;
@@ -73,17 +70,23 @@ public class PaicoinService {
 
         updateCollectionsMaxBlocksCount = rskSystemProperties.getPaicoinUpdateCollectionsMaxBlocksCount();
         updateCollectionsInterval = rskSystemProperties.getPaicoinUpdateCollectionsInterval();
+        paicoinsMultiple = rskSystemProperties.getPaicoinsMultiple();
 
         receiveHeadersTimestamp = Instant.MIN;
         blocksCount = 0;
         updateCollectionsTimestamp = Instant.MIN;
     }
 
-    private static void getTxInputsAddresses(Collection<TransactionInput> txInputs, /* out */ Collection<String> addresses) {
+    private void getTxInputsAddresses(Collection<TransactionInput> txInputs, /* out */ Map<String, Coin> whitelist, Coin coins) {
         for (TransactionInput txInput : txInputs) {
             try {
-                Address address = new Address(txInput.getParams(), sha256hash160(txInput.getScriptSig().getPubKey()));
-                addresses.add(address.toBase58());
+                String address = new Address(txInput.getParams(), sha256hash160(txInput.getScriptSig().getPubKey())).toBase58();
+                Coin transferCoins = whitelist.get(address);
+                if (transferCoins == null) {
+                    whitelist.put(address, round(coins, paicoinsMultiple));
+                } else if (transferCoins.longValue() < coins.longValue()) {
+                    whitelist.replace(address, round(coins, paicoinsMultiple));
+                }
             } catch (Throwable t) {
                 LOGGER.error("Error input address", t);
             }
@@ -102,14 +105,14 @@ public class PaicoinService {
         return PartialMerkleTree.buildFromLeaves(transaction.getParams(), bits, leaves);
     }
 
-    private void getTransfers(List<BtcTransaction> transactions, long height, /* out */ Collection<String> addresses, /* out */ Collection<Transfer> transfers) {
+    private void getTransfers(List<BtcTransaction> transactions, long height, /* out */ Map<String, Coin> whitelist, /* out */ Collection<Transfer> transfers) {
         for (BtcTransaction transaction : transactions) {
             if (!transaction.isCoinBase()) {
                 for (TransactionOutput txOutput : transaction.getOutputs()) {
                     Address outAddr = txOutput.getAddressFromP2SH(transaction.getParams());
                     if (outAddr != null && outAddr.equals(federationAddress)) {
                         if (!bridgeClient.isPaicoinTxHashAlreadyProcessed(transaction.getHash())) {
-                            getTxInputsAddresses(transaction.getInputs(), addresses);
+                            getTxInputsAddresses(transaction.getInputs(), whitelist, txOutput.getValue());
                             transfers.add(new Transfer(transaction.bitcoinSerialize(), height, createPartialMerkleTree(transaction, transactions)));
                             break;
                         }
@@ -120,51 +123,49 @@ public class PaicoinService {
     }
 
     private void importPaicoinBlocks() throws IOException, ParseException {
-        long currectBlockchainHeight = bridgeClient.getBtcBlockchainBestChainHeight();
-        LOGGER.debug("rsk-paicoin height: {}", currectBlockchainHeight);
+        long paiBlockchainHeight = bridgeClient.getBtcBlockchainBestChainHeight();
+        LOGGER.debug("rsk-paicoin height: {}", paiBlockchainHeight);
         long blockchainHeight = paicoinClient.getBlockCount();
         LOGGER.debug("paicoin height: {}", blockchainHeight);
 
-        int count = (int) (blockchainHeight - currectBlockchainHeight);
+        int count = (int) (blockchainHeight - paiBlockchainHeight);
         LOGGER.debug("new blocks: {}", count);
         Instant now = Instant.now();
         if ((count >= headersPerBlock) || (count > 0 && now.minus(receiveHeadersInterval).isAfter(receiveHeadersTimestamp))) {
 
             Map<Long, BtcBlock> blockCache = new TreeMap<>();
-            Set<String> whitelistAddresses = new HashSet<>(128);
+            Map<String, Coin> whitelist = new LinkedHashMap<>(128);
             List<Transfer> transfers = new ArrayList<>(128);
 
-            int blocksCount = (count + headersPerBlock - 1) / headersPerBlock;
+            ++paiBlockchainHeight;
 
-            for (int i = 0; i < blocksCount; ++i, count -= headersPerBlock) {
+            int chanks = (count + headersPerBlock - 1) / headersPerBlock;
+            for (int i = 0; i < chanks; ++i) {
+                Map<String, byte[]> headers = new LinkedHashMap<>(headersPerBlock);
 
-                int headersCount = count > headersPerBlock ? headersPerBlock : count;
-                byte[][] headers = new byte[headersCount][];
-
-                for (int k = 0; k < headersCount; ++k) {
-                    long blockHeight = (currectBlockchainHeight + 1) + i * headersPerBlock + k;
-
-                    String hash = paicoinClient.getBlockHash(blockHeight);
+                for (int k = 0; k < headersPerBlock && count > 0; ++k, ++paiBlockchainHeight, --count) {
+                    String hash = paicoinClient.getBlockHash(paiBlockchainHeight);
                     byte[] blockData = paicoinClient.getBlock(hash);
-                    headers[k] = Arrays.copyOfRange(blockData, 0, BLOCK_HEADER_SIZE);
-                    blockCache.put(blockHeight, paicoinDeserializer.makeBlock(blockData));
+                    BtcBlock block = paicoinDeserializer.makeBlock(blockData);
+                    headers.put(block.getHashAsString(), Arrays.copyOfRange(blockData, 0, BtcBlock.HEADER_SIZE));
+                    blockCache.put(paiBlockchainHeight, block);
 
-                    long confirmedBlockHeight = blockHeight - bridgeClient.getBridgeConstants().getBtc2RskMinimumAcceptableConfirmations();
+                    long confirmedBlockHeight = paiBlockchainHeight - bridgeClient.getBridgeConstants().getBtc2RskMinimumAcceptableConfirmations();
                     if (confirmedBlockHeight > 0) {
-                        BtcBlock block = blockCache.get(confirmedBlockHeight);
-                        if (block == null)
-                            block = paicoinDeserializer.makeBlock(paicoinClient.getBlock(paicoinClient.getBlockHash(confirmedBlockHeight)));
-                        getTransfers(block.getTransactions(), confirmedBlockHeight, whitelistAddresses, transfers);
+                        BtcBlock cachedBlock = blockCache.get(confirmedBlockHeight);
+                        if (cachedBlock == null)
+                            cachedBlock = paicoinDeserializer.makeBlock(paicoinClient.getBlock(paicoinClient.getBlockHash(confirmedBlockHeight)));
+                        getTransfers(cachedBlock.getTransactions(), confirmedBlockHeight, whitelist, transfers);
                     }
                 }
-                bridgeClient.receiveHeaders(headers);
-                bridgeClient.mineBlock();
+                if (bridgeClient.receiveHeaders(headers))
+                    bridgeClient.mineBlock();
             }
             receiveHeadersTimestamp = now;
 
-            if (!whitelistAddresses.isEmpty()) {
-                for (String address : whitelistAddresses)
-                    bridgeClient.addLockWhitelistAddress(address);
+            if (!whitelist.isEmpty()) {
+                for (Map.Entry<String, Coin> e : whitelist.entrySet())
+                    bridgeClient.addLockWhitelistAddress(e.getKey(), e.getValue());
                 bridgeClient.mineBlock();
             }
 
@@ -210,6 +211,14 @@ public class PaicoinService {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
+                if (!bridgeClient.hasImporterSignature()) {
+                    LOGGER.info("Importer's private key could not be found in this node");
+                    return;
+                }
+                if (!bridgeClient.hasWhitelistAuthorizerSignature()) {
+                    LOGGER.info("Whitelist authorizer's private key could not be found in this node");
+                    return;
+                }
                 try {
                     importPaicoinBlocks();
                 } catch (Throwable t) {

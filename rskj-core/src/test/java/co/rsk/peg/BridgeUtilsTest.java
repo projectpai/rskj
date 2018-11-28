@@ -266,7 +266,7 @@ public class BridgeUtilsTest {
 
         Address randomAddress = Address.fromBase58(
             NetworkParameters.fromID(NetworkParameters.ID_REGTEST),
-            "n3PLxDiwWqa5uH7fSbHCxS6VAjD9Y7Rwkj"
+            "MXwiWsRwsu3xyMrSjsuZA22555RULeB4rY"
         );
         BtcTransaction fromRetiringFederationTx = new BtcTransaction(parameters);
         fromRetiringFederationTx.addOutput(Coin.COIN, randomAddress);

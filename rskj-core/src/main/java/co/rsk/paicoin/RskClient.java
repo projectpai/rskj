@@ -75,6 +75,14 @@ public class RskClient {
         request = new Request.Builder().url(HttpUrl.parse(url));
     }
 
+    private static boolean hasError(String message, JSONObject result) {
+        Object error = result.get("error");
+        if (error == null)
+            return false;
+        LOGGER.error("{}: {}", message, ((JSONObject)error).get("message"));
+        return true;
+    }
+
     private JSONObject doRequest(String method, JSONArray params) throws IOException, ParseException {
         JSONObject json = JsonObjectBuilder.create()
             .set("jsonrpc", "2.0")
@@ -103,14 +111,14 @@ public class RskClient {
             .build());
     }
 
-    public void registerPaicoinTransaction(RskAddress address, byte[] txHex, long height, PartialMerkleTree merkleTree) throws IOException, ParseException {
+    public boolean registerPaicoinTransaction(RskAddress address, byte[] txHex, long height, PartialMerkleTree merkleTree) throws IOException, ParseException {
         JSONObject result = sendTransaction(JsonObjectBuilder.create()
             .set("from", address)
             .set("data", REGISTER_BTC_TRANSACTION.encode(txHex, height, merkleTree.bitcoinSerialize())));
-        LOGGER.debug("register paicoin transaction: {}", result.toJSONString());
+        return hasError("registerPaicoinTransaction", result);
     }
 
-    public void receiveHeaders(RskAddress address, byte[][] headers) throws IOException, ParseException {
+    public boolean receiveHeaders(RskAddress address, byte[][] headers) throws IOException, ParseException {
         JsonObjectBuilder params = JsonObjectBuilder.create()
             .set("to", PrecompiledContracts.BRIDGE_ADDR)
             .set("data", RECEIVE_HEADERS.encode((Object)headers));
@@ -121,7 +129,7 @@ public class RskClient {
                 /*.set("gas", gas)*/
                 .build())
             .build());
-        LOGGER.debug("receive headers: {}", result.toJSONString());
+        return hasError("receiveHeaders", result);
     }
 
     public Keccak256 releasePaicoins(RskAddress address, Coin amount) throws IOException, ParseException {
@@ -129,15 +137,16 @@ public class RskClient {
             .set("from", address)
             .set("data", RELEASE_BTC.encode())
             .set("value", amount));
-        LOGGER.debug("release paicoins: {}", result.toJSONString());
+        if (hasError("releasePaicoins", result))
+            return null;
         return new Keccak256(decodeHex((String)result.get("result")));
     }
 
-    public void updateCollections(RskAddress address) throws IOException, ParseException {
+    public boolean updateCollections(RskAddress address) throws IOException, ParseException {
         JSONObject result = sendTransaction(JsonObjectBuilder.create()
             .set("from", address)
             .set("data", UPDATE_COLLECTIONS.encode()));
-        LOGGER.debug("update collections: {}", result.toJSONString());
+        return hasError("updateCollections", result);
     }
 
     private static Sha256Hash hashForSignature(BtcTransaction transaction, int inputIndex, List<ScriptChunk> chunks) {
@@ -178,12 +187,12 @@ public class RskClient {
         return false;
     }
 
-    public void addSignature(BtcECKey key, Keccak256 txHash, BtcTransaction transaction) throws IOException, ParseException {
+    public boolean addSignature(BtcECKey key, Keccak256 txHash, BtcTransaction transaction) throws IOException, ParseException {
         byte[] pubKey = key.getPubKey();
         JSONObject result = sendTransaction(JsonObjectBuilder.create()
             .set("from", ECKey.fromPublicOnly(pubKey).getAddress())
             .set("data", ADD_SIGNATURE.encode(pubKey, transactionSignatures(transaction, key), txHash.getBytes())));
-        LOGGER.debug("add signature: {}", result.toJSONString());
+        return hasError("addSignature", result);
     }
 
     public Map<Keccak256, BtcTransaction> getTransationsWaitingForSignature(NetworkParameters networkParameters, BtcECKey key) throws IOException, ParseException {
@@ -192,6 +201,8 @@ public class RskClient {
         Map<Keccak256, BtcTransaction> transactions = state.getRskTxsWaitingForSignatures();
         if (key != null)
             transactions.entrySet().removeIf(e -> hasSignedInput(e.getValue(), key));
+        if (hasError("getTransationsWaitingForSignature", result))
+            return Collections.EMPTY_MAP;
         return transactions;
     }
 
@@ -202,58 +213,79 @@ public class RskClient {
         return Long.decode((String)result.get("result"));
     }
 
-    public void mineBlock() throws IOException, ParseException {
+    public boolean mineBlock() throws IOException, ParseException {
         JSONObject result = doRequest("evm_mine", null);
-        LOGGER.debug("mine block: {}", result.toJSONString());
+        return hasError("mineBlock", result);
     }
 
-    public void addLockWhitelistAddress(RskAddress address, String addressBase58, BigInteger maxTransferValue) throws IOException, ParseException {
+    public boolean addLockWhitelistAddress(RskAddress address, String addressBase58, BigInteger maxTransferValue) throws IOException, ParseException {
         JSONObject result = sendTransaction(JsonObjectBuilder.create()
             .set("from", address)
             .set("data", ADD_LOCK_WHITELIST_ADDRESS.encode(addressBase58, maxTransferValue)));
-        LOGGER.debug("add lock whitelist address: {}", result.toJSONString());
+        return hasError("addLockWhitelistAddress", result);
     }
 
     public long getBtcBlockchainBestChainHeight() throws IOException, ParseException {
         JSONObject result = call(GET_BTC_BLOCKCHAIN_BEST_CHAIN_HEIGHT.encode());
+        if (hasError("getBtcBlockchainBestChainHeight", result))
+            return -1;
         return ((BigInteger)GET_BTC_BLOCKCHAIN_BEST_CHAIN_HEIGHT.decodeResult(decodeHex((String)result.get("result")))[0]).longValue();
     }
 
     public boolean isPaicoinTxHashAlreadyProcessed(Sha256Hash txHash) throws IOException, ParseException {
         JSONObject result = call(IS_BTC_TX_HASH_ALREADY_PROCESSED.encode(txHash.toString()));
+        if (hasError("isPaicoinTxHashAlreadyProcessed", result))
+            return false;
         return (Boolean)IS_BTC_TX_HASH_ALREADY_PROCESSED.decodeResult(decodeHex((String)result.get("result")))[0];
     }
 
     public co.rsk.bitcoinj.core.Coin getMinimumLockTxValue() throws IOException, ParseException {
         JSONObject result = call(GET_MINIMUM_LOCK_TX_VALUE.encode());
+        if (hasError("getMinimumLockTxValue", result))
+            return null;
         return co.rsk.bitcoinj.core.Coin.valueOf(((BigInteger)GET_MINIMUM_LOCK_TX_VALUE.decodeResult(decodeHex((String)result.get("result")))[0]).longValue());
     }
 
     public String getFederationAddress() throws IOException, ParseException {
         JSONObject result = call(GET_FEDERATION_ADDRESS.encode());
+        if (hasError("getFederationAddress", result))
+            return null;
         return (String)GET_FEDERATION_ADDRESS.decodeResult(decodeHex((String)result.get("result")))[0];
     }
 
     public long getBlocksCount() throws IOException, ParseException {
         JSONObject result = doRequest("eth_blockNumber", null);
+        if (hasError("getBlocksCount", result))
+            return -1;
         return NumberUtils.createBigInteger((String)result.get("result")).longValue();
     }
 
-    public RskAddress importPaicoinAccount(BtcECKey key, String passPhrase) throws IOException, ParseException {
+    public RskAddress newAccountWithSeed(String seed) throws IOException, ParseException {
+        JSONObject result = doRequest("personal_newAccountWithSeed", JsonArrayBuilder.create()
+            .add(seed)
+            .build());
+        if (hasError("newAccountWithSeed", result))
+            return null;
+        return new RskAddress((String)result.get("result"));
+    }
+
+    public RskAddress importRawKey(BtcECKey key, String passPhrase) throws IOException, ParseException {
         JSONObject result = doRequest("personal_importRawKey", JsonArrayBuilder.create()
             .add(key.getPrivKeyBytes())
             .add(passPhrase)
             .build());
+        if (hasError("importRawKey", result))
+            return null;
         return new RskAddress((String)result.get("result"));
     }
 
-    public void unlockAccount(RskAddress address, String passPhrase, Duration duration) throws IOException, ParseException {
+    public boolean unlockAccount(RskAddress address, String passPhrase, Duration duration) throws IOException, ParseException {
         JSONObject result = doRequest("personal_unlockAccount", JsonArrayBuilder.create()
             .add(address)
             .add(passPhrase)
             .add(duration)
             .build());
-        LOGGER.debug("unlock account: {}", result.toJSONString());
+        return hasError("unlockAccount", result);
     }
 
     private static JSONArray toJsonArray(DataWord word) {
@@ -269,14 +301,15 @@ public class RskClient {
                 .set("topics", toJsonArray(word))
                 .build())
             .build());
-
-        LOGGER.debug("set topic filter: {}", result.toJSONString());
+        if (hasError("newFilter", result))
+            return null;
         return (String)result.get("result");
     }
 
     public String newPendingTransactionFilter() throws IOException, ParseException {
         JSONObject result = doRequest("eth_newPendingTransactionFilter", null);
-        LOGGER.debug("set pending transaction filter: {}", result.toJSONString());
+        if (hasError("newPendingTransactionFilter", result))
+            return null;
         return (String)result.get("result");
     }
 
@@ -284,7 +317,8 @@ public class RskClient {
         JSONObject result = doRequest("eth_uninstallFilter", JsonArrayBuilder.create()
             .add(filterId)
             .build());
-        LOGGER.debug("uninstall filter: {}", result.toJSONString());
+        if (hasError("uninstallFilter", result))
+            return false;
         return (Boolean)result.get("result");
     }
 
@@ -292,6 +326,8 @@ public class RskClient {
         JSONObject result = doRequest("eth_getFilterChanges", JsonArrayBuilder.create()
             .add(filterId)
             .build());
+        if (hasError("getFilterChanges", result))
+            return null;
         return (JSONArray)result.get("result");
     }
 

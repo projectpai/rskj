@@ -146,7 +146,7 @@ public class FederationTest {
         // Since we can't mock both Address and ScriptBuilder at the same time (due to PowerMockito limitations)
         // we use a well known P2SH and its corresponding address
         // and just mock the ScriptBuilder
-        // a914896ed9f3446d51b5510f7f0b6ef81b2bde55140e87 => 2N5muMepJizJE1gR7FbHJU6CD18V3BpNF9p
+        // a914896ed9f3446d51b5510f7f0b6ef81b2bde55140e87 => 2FeNFbv3hN6tCvkBirsxCi5qcw4MwikJxF2
         final List<Integer> calls = new ArrayList<>();
         PowerMockito.mockStatic(ScriptBuilder.class);
         PowerMockito.when(ScriptBuilder.createP2SHOutputScript(any(int.class), any(List.class))).thenAnswer((invocationOnMock) -> {
@@ -161,8 +161,8 @@ public class FederationTest {
             return new Script(Hex.decode("a914896ed9f3446d51b5510f7f0b6ef81b2bde55140e87"));
         });
 
-        Assert.assertEquals("2N5muMepJizJE1gR7FbHJU6CD18V3BpNF9p", federation.getAddress().toBase58());
-        Assert.assertEquals("2N5muMepJizJE1gR7FbHJU6CD18V3BpNF9p", federation.getAddress().toBase58());
+        Assert.assertEquals("2FeNFbv3hN6tCvkBirsxCi5qcw4MwikJxF2", federation.getAddress().toBase58());
+        Assert.assertEquals("2FeNFbv3hN6tCvkBirsxCi5qcw4MwikJxF2", federation.getAddress().toBase58());
         // Make sure the address creation happens only once
         Assert.assertEquals(1, calls.size());
     }

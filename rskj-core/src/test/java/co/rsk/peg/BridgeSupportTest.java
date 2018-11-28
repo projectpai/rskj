@@ -2704,11 +2704,11 @@ public class BridgeSupportTest {
 
         when(mockedWhitelist.put(any(Address.class), any(Coin.class))).then((InvocationOnMock m) -> {
             Address address = m.getArgumentAt(0, Address.class);
-            Assert.assertEquals("mwKcYS3H8FUgrPtyGMv3xWvf4jgeZUkCYN", address.toBase58());
-            return true;
+            Assert.assertEquals("McR7vbFLdoTzBUQrK2EGqdi4YJgMh8oo7F", address.toBase58());
+            return Coin.ZERO;
         });
 
-        Assert.assertEquals(1, bridgeSupport.addLockWhitelistAddress(mockedTx, "mwKcYS3H8FUgrPtyGMv3xWvf4jgeZUkCYN", BigInteger.valueOf(Coin.COIN.getValue())).intValue());
+        Assert.assertEquals(0L, bridgeSupport.addLockWhitelistAddress(mockedTx, "McR7vbFLdoTzBUQrK2EGqdi4YJgMh8oo7F", BigInteger.valueOf(Coin.COIN.getValue())).longValue());
     }
 
     @Test
@@ -2723,12 +2723,13 @@ public class BridgeSupportTest {
         LockWhitelist mockedWhitelist = mock(LockWhitelist.class);
         BridgeSupport bridgeSupport = getBridgeSupportWithMocksForWhitelistTests(mockedWhitelist);
 
-        ArgumentCaptor<Address> argument = ArgumentCaptor.forClass(Address.class);
-        when(mockedWhitelist.isWhitelisted(any(Address.class))).thenReturn(true);
+        when(mockedWhitelist.put(any(Address.class), any(Coin.class))).then((InvocationOnMock m) -> {
+            Address address = m.getArgumentAt(0, Address.class);
+            Assert.assertEquals("McR7vbFLdoTzBUQrK2EGqdi4YJgMh8oo7F", address.toBase58());
+            return Coin.SATOSHI;
+        });
 
-        Assert.assertEquals(-1, bridgeSupport.addLockWhitelistAddress(mockedTx, "mwKcYS3H8FUgrPtyGMv3xWvf4jgeZUkCYN", BigInteger.valueOf(Coin.COIN.getValue())).intValue());
-        verify(mockedWhitelist).isWhitelisted(argument.capture());
-        Assert.assertThat(argument.getValue().toBase58(), is("mwKcYS3H8FUgrPtyGMv3xWvf4jgeZUkCYN"));
+        Assert.assertEquals(1L, bridgeSupport.addLockWhitelistAddress(mockedTx, "McR7vbFLdoTzBUQrK2EGqdi4YJgMh8oo7F", BigInteger.valueOf(Coin.COIN.getValue())).longValue());
     }
 
     @Test
@@ -2740,7 +2741,7 @@ public class BridgeSupportTest {
         LockWhitelist mockedWhitelist = mock(LockWhitelist.class);
         BridgeSupport bridgeSupport = getBridgeSupportWithMocksForWhitelistTests(mockedWhitelist);
 
-        Assert.assertEquals(BridgeSupport.LOCK_WHITELIST_GENERIC_ERROR_CODE.intValue(), bridgeSupport.addLockWhitelistAddress(mockedTx, "mwKcYS3H8FUgrPtyGMv3xWvf4jgeZUkCYN", BigInteger.valueOf(Coin.COIN.getValue())).intValue());
+        Assert.assertEquals(BridgeSupport.LOCK_WHITELIST_GENERIC_ERROR_CODE.longValue(), bridgeSupport.addLockWhitelistAddress(mockedTx, "McR7vbFLdoTzBUQrK2EGqdi4YJgMh8oo7F", BigInteger.valueOf(Coin.COIN.getValue())).longValue());
         verify(mockedWhitelist, never()).put(any(), any());
     }
 
@@ -2756,7 +2757,7 @@ public class BridgeSupportTest {
         LockWhitelist mockedWhitelist = mock(LockWhitelist.class);
         BridgeSupport bridgeSupport = getBridgeSupportWithMocksForWhitelistTests(mockedWhitelist);
 
-        Assert.assertEquals(-2, bridgeSupport.addLockWhitelistAddress(mockedTx, "i-am-invalid", BigInteger.valueOf(Coin.COIN.getValue())).intValue());
+        Assert.assertEquals(-2L, bridgeSupport.addLockWhitelistAddress(mockedTx, "i-am-invalid", BigInteger.valueOf(Coin.COIN.getValue())).longValue());
         verify(mockedWhitelist, never()).put(any(), any());
     }
 
@@ -2774,11 +2775,11 @@ public class BridgeSupportTest {
 
         when(mockedWhitelist.remove(any(Address.class))).then((InvocationOnMock m) -> {
             Address address = m.getArgumentAt(0, Address.class);
-            Assert.assertEquals("mwKcYS3H8FUgrPtyGMv3xWvf4jgeZUkCYN", address.toBase58());
+            Assert.assertEquals("McR7vbFLdoTzBUQrK2EGqdi4YJgMh8oo7F", address.toBase58());
             return true;
         });
 
-        Assert.assertEquals(1, bridgeSupport.removeLockWhitelistAddress(mockedTx, "mwKcYS3H8FUgrPtyGMv3xWvf4jgeZUkCYN").intValue());
+        Assert.assertEquals(0, bridgeSupport.removeLockWhitelistAddress(mockedTx, "McR7vbFLdoTzBUQrK2EGqdi4YJgMh8oo7F").intValue());
     }
 
     @Test
@@ -2795,11 +2796,11 @@ public class BridgeSupportTest {
 
         when(mockedWhitelist.remove(any(Address.class))).then((InvocationOnMock m) -> {
             Address address = m.getArgumentAt(0, Address.class);
-            Assert.assertEquals("mwKcYS3H8FUgrPtyGMv3xWvf4jgeZUkCYN", address.toBase58());
+            Assert.assertEquals("McR7vbFLdoTzBUQrK2EGqdi4YJgMh8oo7F", address.toBase58());
             return false;
         });
 
-        Assert.assertEquals(-1, bridgeSupport.removeLockWhitelistAddress(mockedTx, "mwKcYS3H8FUgrPtyGMv3xWvf4jgeZUkCYN").intValue());
+        Assert.assertEquals(-1, bridgeSupport.removeLockWhitelistAddress(mockedTx, "McR7vbFLdoTzBUQrK2EGqdi4YJgMh8oo7F").intValue());
     }
 
     @Test
@@ -2811,7 +2812,7 @@ public class BridgeSupportTest {
         LockWhitelist mockedWhitelist = mock(LockWhitelist.class);
         BridgeSupport bridgeSupport = getBridgeSupportWithMocksForWhitelistTests(mockedWhitelist);
 
-        Assert.assertEquals(BridgeSupport.LOCK_WHITELIST_GENERIC_ERROR_CODE.intValue(), bridgeSupport.removeLockWhitelistAddress(mockedTx, "mwKcYS3H8FUgrPtyGMv3xWvf4jgeZUkCYN").intValue());
+        Assert.assertEquals(BridgeSupport.LOCK_WHITELIST_GENERIC_ERROR_CODE.intValue(), bridgeSupport.removeLockWhitelistAddress(mockedTx, "McR7vbFLdoTzBUQrK2EGqdi4YJgMh8oo7F").intValue());
         verify(mockedWhitelist, never()).remove(any());
     }
 
