@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import static co.rsk.logger.LoggingMarker.SILENT;
 import static co.rsk.paicoin.ImportUtils.encodeHex;
 import static co.rsk.paicoin.ImportUtils.last;
 import static co.rsk.peg.Bridge.ADD_LOCK_WHITELIST_ADDRESS;
@@ -196,12 +197,17 @@ public class BridgeClient {
         return Address.fromBase58(networkParameters, (String)GET_FEDERATION_ADDRESS.decodeResult(result.getHReturn())[0]);
     }
 
-    public boolean hasImporterSignature() {
-        return wallet.getAccount(importAddr) != null;
-    }
-
-    public boolean hasWhitelistAuthorizerSignature() {
-        return wallet.getAccount(whitelistAuthorizeAddr) != null;
+    public boolean hasSignatures() {
+        boolean result = true;
+        if (wallet.getAccount(importAddr) == null) {
+            LOGGER.error(SILENT, "Importer's private key was not found");
+            result = false;
+        }
+        if (wallet.getAccount(whitelistAuthorizeAddr) == null) {
+            LOGGER.error(SILENT, "Whitelist authorizer's private key was not found");
+            result = false;
+        }
+        return result;
     }
 
     private static boolean isFederatorAddress(Federation federation, RskAddress address) {

@@ -146,10 +146,10 @@ dependencies {
         exclude group: 'junit', module: 'junit'
     }
 
+    compile "ch.qos.logback:logback-core:${logbackVersion}"
+    compile "ch.qos.logback:logback-classic:${logbackVersion}"
     runtime "org.slf4j:jcl-over-slf4j:${slf4jVersion}"
     runtime "org.slf4j:log4j-over-slf4j:${slf4jVersion}"
-    runtime "ch.qos.logback:logback-classic:${logbackVersion}"
-    runtime "ch.qos.logback:logback-core:${logbackVersion}"
 
     testCompile "junit:junit:${junitVersion}"
     testCompile "org.springframework:spring-test:${springVersion}"
@@ -175,7 +175,7 @@ dependencyVerification {
         'com.fasterxml.jackson.core:jackson-annotations:4caf3936315439b509b8c3ef494d4e47eaa6d25c3b5299aadb0eafb3944ed32f',
         'com.fasterxml.jackson.core:jackson-core:256ff34118ab292d1b4f3ee4d2c3e5e5f0f609d8e07c57e8ad1f51c46d4fbb46',
         'com.fasterxml.jackson.core:jackson-databind:4f74337b6d18664be0f5b15c6664b17aa3972c9c175092328b139b894ff66f19',
-	'com.github.briandilley.jsonrpc4j:jsonrpc4j:bb2cde1f554e152e69741353c6630e02e69f217abbd6703f8c038e6ed637c105',
+        'com.github.briandilley.jsonrpc4j:jsonrpc4j:bb2cde1f554e152e69741353c6630e02e69f217abbd6703f8c038e6ed637c105',
         'com.google.code.findbugs:jsr305:1e7f53fa5b8b5c807e986ba335665da03f18d660802d8bf061823089d1bee468',
         'com.google.guava:guava:d664fbfc03d2e5ce9cab2a44fb01f1d0bf9dfebeccc1a473b1f9ea31f79f6f99',
         'com.google.protobuf:protobuf-java:55aa554843983f431df5616112cf688d38aa17c132357afd1c109435bfdac4e6',

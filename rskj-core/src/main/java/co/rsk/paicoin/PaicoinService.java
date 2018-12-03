@@ -25,7 +25,6 @@ import co.rsk.bitcoinj.core.TransactionInput;
 import co.rsk.bitcoinj.core.TransactionOutput;
 import co.rsk.bitcoinj.core.Utils;
 import co.rsk.config.RskSystemProperties;
-import co.rsk.core.RskAddress;
 import co.rsk.crypto.Keccak256;
 import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
@@ -211,14 +210,8 @@ public class PaicoinService {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                if (!bridgeClient.hasImporterSignature()) {
-                    LOGGER.info("Importer's private key could not be found in this node");
+                if (!bridgeClient.hasSignatures())
                     return;
-                }
-                if (!bridgeClient.hasWhitelistAuthorizerSignature()) {
-                    LOGGER.info("Whitelist authorizer's private key could not be found in this node");
-                    return;
-                }
                 try {
                     importPaicoinBlocks();
                 } catch (Throwable t) {
