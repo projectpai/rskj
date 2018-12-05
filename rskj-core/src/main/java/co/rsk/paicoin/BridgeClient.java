@@ -26,7 +26,6 @@ import co.rsk.core.Wallet;
 import co.rsk.crypto.Keccak256;
 import co.rsk.mine.MinerClient;
 import co.rsk.mine.MinerServer;
-import co.rsk.peg.Federation;
 import co.rsk.peg.StateForFederator;
 import co.rsk.rpc.ExecutionBlockRetriever;
 import org.apache.commons.lang3.ArrayUtils;
@@ -36,6 +35,7 @@ import org.ethereum.core.Blockchain;
 import org.ethereum.core.Transaction;
 import org.ethereum.core.TransactionReceipt;
 import org.ethereum.crypto.ECKey;
+import org.ethereum.crypto.HashUtil;
 import org.ethereum.facade.Ethereum;
 import org.ethereum.listener.EthereumListener;
 import org.ethereum.listener.EthereumListenerAdapter;
@@ -83,10 +83,11 @@ public class BridgeClient {
     private final MinerClient minerClient;
     private final MinerServer minerServer;
 
-    private final RskAddress whitelistAuthorizeAddr;
-    private final RskAddress importAddr;
     private final ArrayBlockingQueue<BtcTransaction> releasePaicoinsTxQueue;
     private final EthereumListener ethereumListener;
+
+    private BtcECKey importBtcECKey;
+    private BtcECKey whitelistAuthorizeBtcECKey;
 
     @Autowired
     public BridgeClient(RskSystemProperties rskSystemProperties, Ethereum ethereum, Blockchain blockchain, Wallet wallet,
@@ -101,12 +102,6 @@ public class BridgeClient {
         this.executionBlockRetriever = executionBlockRetriever;
         this.minerClient = minerClient;
         this.minerServer = minerServer;
-
-        this.whitelistAuthorizeAddr = rskSystemProperties.getPaicoinWhitelistAuthorizeAddr();
-        this.importAddr = rskSystemProperties.getPaicoinImportAddr();
-        if (!isFederatorAddress(bridgeConstants.getGenesisFederation(), importAddr))
-            throw new RuntimeException("ImportAddr must be federator address");
-
         this.releasePaicoinsTxQueue = new ArrayBlockingQueue<>(16);
         this.ethereumListener = new BlockEthereumListener();
     }
@@ -127,31 +122,28 @@ public class BridgeClient {
         return networkParameters;
     }
 
-    private Account getAccount(RskAddress address) {
-        Account account = wallet.getAccount(address);
-        if (account == null)
-            throw new RuntimeException("Private key could not be found in this node");
-        return account;
+    private static RskAddress getRskAddress(BtcECKey key) {
+        if (key == null) {
+            return RskAddress.nullAddress();
+        } else {
+            byte[] pubKey = (key.isCompressed() ? key.decompress() : key).getPubKey();
+            return new RskAddress(HashUtil.sha3omit12(Arrays.copyOfRange(pubKey, 1, pubKey.length)));
+        }
     }
 
-    private BtcECKey getBtcECKey(RskAddress address) {
-        return BtcECKey.fromPrivate(getAccount(address).getEcKey().getPrivKeyBytes());
-    }
-
-    private void sendTransaction(RskAddress address, byte[] data) {
-        Account account = getAccount(address);
+    private void sendTransaction(BtcECKey key, byte[] data) {
         synchronized (blockchain.getTransactionPool()) {
-            Transaction transaction = ethereum.createTransaction(blockchain.getTransactionPool().getRepository().getNonce(address), BigInteger.ZERO,
+            Transaction transaction = ethereum.createTransaction(blockchain.getTransactionPool().getRepository().getNonce(getRskAddress(key)), BigInteger.ZERO,
                 BigInteger.valueOf(GasCost.TRANSACTION_DEFAULT), BRIDGE_ADDR.getBytes(), BigInteger.ZERO, data);
-            transaction.sign(account.getEcKey().getPrivKeyBytes());
+            transaction.sign(key.getPrivKeyBytes());
             ethereum.submitTransaction(transaction);
         }
     }
 
-    private ProgramResult callContract(RskAddress address, byte[] data) {
+    private ProgramResult callContract(BtcECKey key, byte[] data) {
         Block executionBlock = executionBlockRetriever.getExecutionBlock("pending");
         return reversibleTransactionExecutor.executeTransaction(executionBlock, executionBlock.getCoinbase(), EMPTY_BYTE_ARRAY,
-            BigInteger.valueOf(GasCost.TRANSACTION_DEFAULT).toByteArray(), BRIDGE_ADDR.getBytes(), EMPTY_BYTE_ARRAY, data, address.getBytes());
+            BigInteger.valueOf(GasCost.TRANSACTION_DEFAULT).toByteArray(), BRIDGE_ADDR.getBytes(), EMPTY_BYTE_ARRAY, data, getRskAddress(key).getBytes());
     }
 
     private static Sha256Hash hashForSignature(BtcTransaction transaction, int inputIndex, List<ScriptChunk> chunks) {
@@ -193,33 +185,57 @@ public class BridgeClient {
     }
 
     public Address getFederationAddress() {
-        ProgramResult result = callContract(RskAddress.nullAddress(), GET_FEDERATION_ADDRESS.encode());
+        ProgramResult result = callContract(null, GET_FEDERATION_ADDRESS.encode());
         return Address.fromBase58(networkParameters, (String)GET_FEDERATION_ADDRESS.decodeResult(result.getHReturn())[0]);
     }
 
-    public boolean hasSignatures() {
+    public boolean hasRequiredSignatures() {
         boolean result = true;
-        if (wallet.getAccount(importAddr) == null) {
-            LOGGER.error(SILENT, "Importer's private key was not found");
-            result = false;
+        if (importBtcECKey == null) {
+            for (BtcECKey key : bridgeConstants.getGenesisFederation().getPublicKeys()) {
+                Account account = wallet.getAccount(getRskAddress(key));
+                if (account != null) {
+                    if (importBtcECKey != null) {
+                        LOGGER.error(SILENT, "Federator's private key has to be unique for this node");
+                        result = false;
+                        break;
+                    } else {
+                        importBtcECKey = BtcECKey.fromPrivate(account.getEcKey().getPrivKey());
+                    }
+                }
+            }
+            if (!result) {
+                importBtcECKey = null;
+            } else if (importBtcECKey == null) {
+                LOGGER.error(SILENT, "Federator's private key was not found");
+                result = false;
+            }
         }
-        if (wallet.getAccount(whitelistAuthorizeAddr) == null) {
-            LOGGER.error(SILENT, "Whitelist authorizer's private key was not found");
-            result = false;
+        if (whitelistAuthorizeBtcECKey == null) {
+            for (ECKey key : bridgeConstants.getLockWhitelistChangeAuthorizer().getAuthorizedKeys()) {
+                Account account = wallet.getAccount(new RskAddress(key.getAddress()));
+                if (account != null) {
+                    if (whitelistAuthorizeBtcECKey != null) {
+                        LOGGER.error(SILENT, "Whitelist authorizer's private key has to be unique for this node");
+                        result = false;
+                        break;
+                    } else {
+                        whitelistAuthorizeBtcECKey = BtcECKey.fromPrivate(account.getEcKey().getPrivKey());
+                    }
+                }
+            }
+            if (!result) {
+                whitelistAuthorizeBtcECKey = null;
+            } else if (whitelistAuthorizeBtcECKey == null) {
+                LOGGER.error(SILENT, "Whitelist authorizer's private key was not found");
+                result = false;
+            }
         }
         return result;
     }
 
-    private static boolean isFederatorAddress(Federation federation, RskAddress address) {
-        for (BtcECKey key : federation.getPublicKeys()) {
-            if (Arrays.equals(address.getBytes(), ECKey.fromPublicOnly(key.getPubKey()).getAddress()))
-                return true;
-        }
-        return false;
-    }
-
     public void registerPaicoinTransaction(byte[] txHex, long height, PartialMerkleTree merkleTree) {
-        sendTransaction(importAddr, REGISTER_BTC_TRANSACTION.encode(txHex, height, merkleTree.bitcoinSerialize()));
+        sendTransaction(importBtcECKey, REGISTER_BTC_TRANSACTION.encode(txHex, height, merkleTree.bitcoinSerialize()));
     }
 
     private static Object serializeBlockHeaders(Map<String, byte[]> blockHeaders) {
@@ -228,16 +244,16 @@ public class BridgeClient {
 
     public boolean receiveHeaders(Map<String, byte[]> blockHeaders) {
         byte[] contract = RECEIVE_HEADERS.encode(serializeBlockHeaders(blockHeaders));
-        ProgramResult result = callContract(importAddr, contract);
+        ProgramResult result = callContract(importBtcECKey, contract);
         Object[] redundantHeaders = (Object[])RECEIVE_HEADERS.decodeResult(result.getHReturn())[0];
         if (ArrayUtils.isEmpty(redundantHeaders)) {
-            sendTransaction(importAddr, contract);
+            sendTransaction(importBtcECKey, contract);
             return true;
         } else {
             for (Object hash : redundantHeaders)
                 blockHeaders.remove(hash);
             if (!blockHeaders.isEmpty()) {
-                sendTransaction(importAddr, RECEIVE_HEADERS.encode(serializeBlockHeaders(blockHeaders)));
+                sendTransaction(importBtcECKey, RECEIVE_HEADERS.encode(serializeBlockHeaders(blockHeaders)));
                 return true;
             }
         }
@@ -245,35 +261,31 @@ public class BridgeClient {
     }
 
     public void updateCollections() {
-        sendTransaction(importAddr, UPDATE_COLLECTIONS.encode());
+        sendTransaction(importBtcECKey, UPDATE_COLLECTIONS.encode());
     }
 
     public void addSignature(Keccak256 txHash, BtcTransaction transaction) {
-        BtcECKey signer = getBtcECKey(importAddr);
-        sendTransaction(importAddr, ADD_SIGNATURE.encode(signer.getPubKey(), transactionSignatures(transaction, signer), txHash.getBytes()));
+        sendTransaction(importBtcECKey, ADD_SIGNATURE.encode(importBtcECKey.getPubKey(), transactionSignatures(transaction, importBtcECKey), txHash.getBytes()));
     }
 
     public Map<Keccak256, BtcTransaction> getTransationsWaitingForSignature() {
-        BtcECKey signer = getBtcECKey(importAddr);
-        ProgramResult result = callContract(RskAddress.nullAddress(), GET_STATE_FOR_BTC_RELEASE_CLIENT.encode());
+        ProgramResult result = callContract(null, GET_STATE_FOR_BTC_RELEASE_CLIENT.encode());
         StateForFederator state = new StateForFederator((byte[])GET_STATE_FOR_BTC_RELEASE_CLIENT.decodeResult(result.getHReturn())[0], networkParameters);
         Map<Keccak256, BtcTransaction> transactions = state.getRskTxsWaitingForSignatures();
-        transactions.entrySet().removeIf(e -> hasSignedInput(e.getValue(), signer));
+        transactions.entrySet().removeIf(e -> hasSignedInput(e.getValue(), importBtcECKey));
         return transactions;
     }
 
-    public Map<Keccak256, BtcTransaction> getTransationsWaitingForSignature777(RskAddress address) {
-        BtcECKey signer = getBtcECKey(address);
-        ProgramResult result = callContract(RskAddress.nullAddress(), GET_STATE_FOR_BTC_RELEASE_CLIENT.encode());
+    public Map<Keccak256, BtcTransaction> getTransationsWaitingForSignature(BtcECKey key) {
+        ProgramResult result = callContract(null, GET_STATE_FOR_BTC_RELEASE_CLIENT.encode());
         StateForFederator state = new StateForFederator((byte[])GET_STATE_FOR_BTC_RELEASE_CLIENT.decodeResult(result.getHReturn())[0], networkParameters);
         Map<Keccak256, BtcTransaction> transactions = state.getRskTxsWaitingForSignatures();
-        transactions.entrySet().removeIf(e -> hasSignedInput(e.getValue(), signer));
+        transactions.entrySet().removeIf(e -> hasSignedInput(e.getValue(), key));
         return transactions;
     }
 
-    public void addSignature777(RskAddress address, Keccak256 txHash, BtcTransaction transaction) {
-        BtcECKey signer = getBtcECKey(address);
-        sendTransaction(importAddr, ADD_SIGNATURE.encode(signer.getPubKey(), transactionSignatures(transaction, signer), txHash.getBytes()));
+    public void addSignature(BtcECKey key, Keccak256 txHash, BtcTransaction transaction) {
+        sendTransaction(key, ADD_SIGNATURE.encode(key.getPubKey(), transactionSignatures(transaction, key), txHash.getBytes()));
     }
 
     public void mineBlock() {
@@ -282,21 +294,17 @@ public class BridgeClient {
         minerClient.mineBlock();
     }
 
-    public RskAddress addWalletAccount(ECKey key) {
-        return new RskAddress(wallet.addAccountWithPrivateKey(key.getPrivKeyBytes()));
-    }
-
     public void addLockWhitelistAddress(String address, Coin transferCoins) {
         byte[] contract = ADD_LOCK_WHITELIST_ADDRESS.encode(address, BigInteger.valueOf(transferCoins.getValue()));
-        ProgramResult result = callContract(whitelistAuthorizeAddr, contract);
+        ProgramResult result = callContract(whitelistAuthorizeBtcECKey, contract);
         long maxTransferCoins = ((BigInteger)ADD_LOCK_WHITELIST_ADDRESS.decodeResult(result.getHReturn())[0]).longValue();
         if (maxTransferCoins == 0) {
-            sendTransaction(whitelistAuthorizeAddr, contract);
+            sendTransaction(whitelistAuthorizeBtcECKey, contract);
         } else if (maxTransferCoins > 0) {
             LOGGER.debug("Paicoin address is already in the whitelist");
             if (transferCoins.getValue() > maxTransferCoins) {
-                sendTransaction(whitelistAuthorizeAddr, REMOVE_LOCK_WHITELIST_ADDRESS.encode(address));
-                sendTransaction(whitelistAuthorizeAddr, contract);
+                sendTransaction(whitelistAuthorizeBtcECKey, REMOVE_LOCK_WHITELIST_ADDRESS.encode(address));
+                sendTransaction(whitelistAuthorizeBtcECKey, contract);
             }
         } else {
             throw new RuntimeException("Invalid paicoin address");
@@ -304,17 +312,17 @@ public class BridgeClient {
     }
 
     public long getBtcBlockchainBestChainHeight() {
-        ProgramResult result = callContract(RskAddress.nullAddress(), GET_BTC_BLOCKCHAIN_BEST_CHAIN_HEIGHT.encode());
+        ProgramResult result = callContract(null, GET_BTC_BLOCKCHAIN_BEST_CHAIN_HEIGHT.encode());
         return ((BigInteger)GET_BTC_BLOCKCHAIN_BEST_CHAIN_HEIGHT.decodeResult(result.getHReturn())[0]).longValue();
     }
 
     public boolean isPaicoinTxHashAlreadyProcessed(Sha256Hash txHash) {
-        ProgramResult result = callContract(RskAddress.nullAddress(), IS_BTC_TX_HASH_ALREADY_PROCESSED.encode(txHash.toString()));
+        ProgramResult result = callContract(null, IS_BTC_TX_HASH_ALREADY_PROCESSED.encode(txHash.toString()));
         return (Boolean)IS_BTC_TX_HASH_ALREADY_PROCESSED.decodeResult(result.getHReturn())[0];
     }
 
     public co.rsk.bitcoinj.core.Coin getMinimumLockTxValue() {
-        ProgramResult result = callContract(RskAddress.nullAddress(), GET_MINIMUM_LOCK_TX_VALUE.encode());
+        ProgramResult result = callContract(null, GET_MINIMUM_LOCK_TX_VALUE.encode());
         return co.rsk.bitcoinj.core.Coin.valueOf(((BigInteger)GET_MINIMUM_LOCK_TX_VALUE.decodeResult(result.getHReturn())[0]).longValue());
     }
 

@@ -1,6 +1,7 @@
 package co.rsk.paicoin;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.time.Instant;
@@ -16,6 +17,7 @@ import java.util.TreeMap;
 
 import co.rsk.bitcoinj.core.Address;
 import co.rsk.bitcoinj.core.BtcBlock;
+import co.rsk.bitcoinj.core.BtcECKey;
 import co.rsk.bitcoinj.core.BtcTransaction;
 import co.rsk.bitcoinj.core.Coin;
 import co.rsk.bitcoinj.core.MessageSerializer;
@@ -26,6 +28,7 @@ import co.rsk.bitcoinj.core.TransactionOutput;
 import co.rsk.bitcoinj.core.Utils;
 import co.rsk.config.RskSystemProperties;
 import co.rsk.crypto.Keccak256;
+import org.ethereum.crypto.HashUtil;
 import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -198,6 +201,24 @@ public class PaicoinService {
         }
         if (!transactions.isEmpty())
             bridgeClient.mineBlock();
+//<editor-fold desc="FOR TEST ONLY!!!">
+        List<BtcECKey> keys = Arrays.asList(
+            BtcECKey.fromPrivate(HashUtil.keccak256("test-paicoin-rootstock-federator-1".getBytes(StandardCharsets.UTF_8))),
+            BtcECKey.fromPrivate(HashUtil.keccak256("test-paicoin-rootstock-federator-2".getBytes(StandardCharsets.UTF_8))),
+            BtcECKey.fromPrivate(HashUtil.keccak256("test-paicoin-rootstock-federator-3".getBytes(StandardCharsets.UTF_8)))
+        );
+        for (BtcECKey key : keys) {
+            transactions = bridgeClient.getTransationsWaitingForSignature(key);
+            for (Map.Entry<Keccak256, BtcTransaction> e : transactions.entrySet()) {
+                Keccak256 hash = e.getKey();
+                BtcTransaction transaction = e.getValue();
+                LOGGER.debug("!!! Pending transaction's hash: {}", hash);
+                bridgeClient.addSignature(key, hash, transaction);
+            }
+            if (!transactions.isEmpty())
+                bridgeClient.mineBlock();
+        }
+//</editor-fold>
         for (BtcTransaction transaction : bridgeClient.checkReleasePaicoinsTransactions()) {
             LOGGER.debug("Send transaction to Paicoin: {}", transaction);
             paicoinClient.sendTransaction(transaction.bitcoinSerialize());
@@ -210,7 +231,7 @@ public class PaicoinService {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                if (!bridgeClient.hasSignatures())
+                if (!bridgeClient.hasRequiredSignatures())
                     return;
                 try {
                     importPaicoinBlocks();

@@ -414,34 +414,6 @@ public class RskSystemProperties extends SystemProperties {
         return configFromFiles.getDuration("paicoin.pollInterval");
     }
 
-    private RskAddress getRskAddressParam(String paramName) {
-        byte[] key = decodeHex(configFromFiles.getString(paramName));
-        byte[] address;
-        switch (key.length) {
-            case 20:
-                address = key;
-                break;
-            case 32:
-                address = ECKey.fromPrivate(key).getAddress();
-                break;
-            case 33:
-            case 65:
-                address = ECKey.fromPublicOnly(key).getAddress();
-                break;
-            default:
-                throw new ConfigException.BadValue(paramName, "Address must be 20, 32 or 65 bytes long");
-        }
-        return new RskAddress(address);
-    }
-
-    public RskAddress getPaicoinWhitelistAuthorizeAddr() {
-        return getRskAddressParam("paicoin.whitelistAuthorizeAddr");
-    }
-
-    public RskAddress getPaicoinImportAddr() {
-        return getRskAddressParam("paicoin.importAddr");
-    }
-
     public int getPaicoinsMultiple() {
         return configFromFiles.getInt("paicoin.paicoinsMultiple");
     }

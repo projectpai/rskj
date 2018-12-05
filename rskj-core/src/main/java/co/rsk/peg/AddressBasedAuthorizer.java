@@ -52,8 +52,8 @@ public class AddressBasedAuthorizer {
         return isAuthorized(tx.getSender());
     }
 
-    public int getNumberOfAuthorizedKeys() {
-        return authorizedKeys.size();
+    public List<ECKey> getAuthorizedKeys() {
+        return authorizedKeys;
     }
 
     public int getRequiredAuthorizedKeys() {
@@ -61,10 +61,10 @@ public class AddressBasedAuthorizer {
             case ONE:
                 return 1;
             case MAJORITY:
-                return getNumberOfAuthorizedKeys() / 2 + 1;
+                return authorizedKeys.size() / 2 + 1;
             case ALL:
             default:
-                return getNumberOfAuthorizedKeys();
+                return authorizedKeys.size();
         }
     }
 }

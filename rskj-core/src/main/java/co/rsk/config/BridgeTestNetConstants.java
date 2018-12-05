@@ -27,6 +27,7 @@ import org.ethereum.crypto.ECKey;
 import org.spongycastle.util.encoders.Hex;
 
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
 
@@ -46,9 +47,7 @@ public class BridgeTestNetConstants extends BridgeConstants {
             BtcECKey.fromPublicOnly(Hex.decode("0229b62475f32190eb04db43c89923b75e4072b75bd705701196ff5918103ffa82"))
         );
 
-        // Currently set to:
-        // Wednesday, January 3, 2018 12:00:00 AM GMT-03:00
-        Instant genesisFederationAddressCreatedAt = Instant.ofEpochMilli(1514948400l);
+        Instant genesisFederationAddressCreatedAt = ZonedDateTime.parse("2018-11-28T00:00:00Z").toInstant();
 
         genesisFederation = new Federation(
                 genesisFederationPublicKeys,
@@ -106,7 +105,7 @@ public class BridgeTestNetConstants extends BridgeConstants {
                 AddressBasedAuthorizer.MinimumRequiredCalculation.MAJORITY
         );
 
-        genesisFeePerKb = Coin.MICROCOIN.multiply(10);
+        genesisFeePerKb = Coin.MICROCOIN.multiply(100);
     }
 
     public static BridgeTestNetConstants getInstance() {
