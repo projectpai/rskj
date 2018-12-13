@@ -11,6 +11,7 @@ import javax.net.ssl.TrustManager;
 
 import co.rsk.core.Coin;
 import co.rsk.core.RskAddress;
+import co.rsk.crypto.Keccak256;
 import com.squareup.okhttp.MediaType;
 import com.squareup.okhttp.OkHttpClient;
 import org.apache.commons.lang3.builder.Builder;
@@ -35,6 +36,10 @@ public final class ImportUtils {
     public static <T> T last(List<T> list) {
         int size = size(list);
         return (size > 0 ? list.get(size - 1) : null);
+    }
+
+    public static boolean and(boolean a, boolean b) {
+        return a && b;
     }
 
     public static co.rsk.bitcoinj.core.Coin round(co.rsk.bitcoinj.core.Coin coins, int multiple) {
@@ -235,6 +240,11 @@ public final class ImportUtils {
 
         public JsonArrayBuilder add(DataWord value) {
             jsonArray.add(value.toString());
+            return this;
+        }
+
+        public JsonArrayBuilder add(Keccak256 value) {
+            jsonArray.add(value.toHexString());
             return this;
         }
 

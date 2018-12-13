@@ -313,6 +313,24 @@ public class RskClient {
         return (String)result.get("result");
     }
 
+    public JSONObject getTransactionByHash(Keccak256 txHash) throws IOException, ParseException {
+        JSONObject result = doRequest("eth_getTransactionByHash", JsonArrayBuilder.create()
+            .add(txHash)
+            .build());
+        if (hasError("getTransactionByHash", result))
+            return null;
+        return (JSONObject)result.get("result");
+    }
+
+    public JSONObject getTransactionReceipt(Keccak256 txHash) throws IOException, ParseException {
+        JSONObject result = doRequest("eth_getTransactionReceipt", JsonArrayBuilder.create()
+            .add(txHash)
+            .build());
+        if (hasError("getTransactionReceipt", result))
+            return null;
+        return (JSONObject)result.get("result");
+    }
+
     public boolean uninstallFilter(String filterId) throws IOException, ParseException {
         JSONObject result = doRequest("eth_uninstallFilter", JsonArrayBuilder.create()
             .add(filterId)

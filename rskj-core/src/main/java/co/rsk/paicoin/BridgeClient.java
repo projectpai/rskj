@@ -28,6 +28,7 @@ import co.rsk.mine.MinerClient;
 import co.rsk.mine.MinerServer;
 import co.rsk.peg.StateForFederator;
 import co.rsk.rpc.ExecutionBlockRetriever;
+import com.google.common.primitives.Booleans;
 import org.apache.commons.lang3.ArrayUtils;
 import org.ethereum.core.Account;
 import org.ethereum.core.Block;
@@ -50,6 +51,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import static co.rsk.logger.LoggingMarker.SILENT;
+import static co.rsk.paicoin.ImportUtils.and;
 import static co.rsk.paicoin.ImportUtils.encodeHex;
 import static co.rsk.paicoin.ImportUtils.last;
 import static co.rsk.peg.Bridge.ADD_LOCK_WHITELIST_ADDRESS;
@@ -189,7 +191,7 @@ public class BridgeClient {
         return Address.fromBase58(networkParameters, (String)GET_FEDERATION_ADDRESS.decodeResult(result.getHReturn())[0]);
     }
 
-    public boolean hasRequiredSignatures() {
+    private boolean hasFederatorsPrivateKey() {
         boolean result = true;
         if (importBtcECKey == null) {
             for (BtcECKey key : bridgeConstants.getGenesisFederation().getPublicKeys()) {
@@ -211,6 +213,11 @@ public class BridgeClient {
                 result = false;
             }
         }
+        return result;
+    }
+
+    private boolean hasWhitelistAuthorizersPrivateKey() {
+        boolean result = true;
         if (whitelistAuthorizeBtcECKey == null) {
             for (ECKey key : bridgeConstants.getLockWhitelistChangeAuthorizer().getAuthorizedKeys()) {
                 Account account = wallet.getAccount(new RskAddress(key.getAddress()));
@@ -232,6 +239,10 @@ public class BridgeClient {
             }
         }
         return result;
+    }
+
+    public boolean hasRequiredSignatures() {
+        return and(hasFederatorsPrivateKey(), hasWhitelistAuthorizersPrivateKey());
     }
 
     public void registerPaicoinTransaction(byte[] txHex, long height, PartialMerkleTree merkleTree) {

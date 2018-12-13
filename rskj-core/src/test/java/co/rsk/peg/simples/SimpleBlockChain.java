@@ -18,6 +18,7 @@
 
 package co.rsk.peg.simples;
 
+import co.rsk.bitcoinj.core.BlockchainAddResult;
 import co.rsk.bitcoinj.core.BtcBlock;
 import co.rsk.bitcoinj.core.BtcBlockChain;
 import co.rsk.bitcoinj.core.Context;
@@ -44,18 +45,18 @@ public class SimpleBlockChain extends BtcBlockChain {
         this.highBlock = new StoredBlock(null, BigInteger.ONE, 100);
     }
 
-    @Override
-    public boolean add(BtcBlock block) {
+    public BlockchainAddResult addBlock(BtcBlock block) {
         StoredBlock sblock = new StoredBlock(block, BigInteger.ONE, 1);
+        BlockchainAddResult result = new BlockchainAddResult();
         try {
             this.blockStore.put(sblock);
             this.block = sblock;
             this.setChainHead(sblock);
+            result.setSuccess(true);
         } catch (BlockStoreException e) {
             e.printStackTrace();
-            return false;
         }
-        return true;
+        return result;
     }
 
     public void useHighBlock() {

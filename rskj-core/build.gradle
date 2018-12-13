@@ -148,8 +148,8 @@ dependencies {
 
     compile "ch.qos.logback:logback-core:${logbackVersion}"
     compile "ch.qos.logback:logback-classic:${logbackVersion}"
-    runtime "org.slf4j:jcl-over-slf4j:${slf4jVersion}"
-    runtime "org.slf4j:log4j-over-slf4j:${slf4jVersion}"
+    compile "org.slf4j:jcl-over-slf4j:${slf4jVersion}"
+    compile "org.slf4j:log4j-over-slf4j:${slf4jVersion}"
 
     testCompile "junit:junit:${junitVersion}"
     testCompile "org.springframework:spring-test:${springVersion}"

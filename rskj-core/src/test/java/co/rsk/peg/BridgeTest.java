@@ -880,7 +880,7 @@ public class BridgeTest {
         bridge.init(mockedTransaction, null, null, null, null, null);
         BridgeSupport bridgeSupportMock = mock(BridgeSupport.class);
         Whitebox.setInternalState(bridge, "bridgeSupport", bridgeSupportMock);
-        when(bridgeSupportMock.addLockWhitelistAddress(mockedTransaction, "i-am-an-address", BigInteger.valueOf(Coin.COIN.getValue()))).thenReturn(1234L);
+        when(bridgeSupportMock.addLockWhitelistAddress(mockedTransaction, "i-am-an-address", BigInteger.valueOf(Coin.COIN.getValue()))).thenReturn(BigInteger.valueOf(1234L));
 
         Assert.assertEquals(1234L, bridge.addLockWhitelistAddress(new Object[]{ "i-am-an-address", BigInteger.valueOf(Coin.COIN.getValue())}).intValue());
     }
